@@ -28,12 +28,12 @@ def main(args=None):
                         help='list of training files')
     parser.add_argument('--window-length', dest='window_length', deafult=0.05,
                         help='Word boundary window length.')
-    parser.add_argument('--noise-threshold', dest='noise_threshold', default=0.01
-                        'Noise threshold on words vs quiet.')
+    parser.add_argument('--noise-threshold', dest='noise_threshold', default=0.01,
+                        help='Noise threshold on words vs quiet.')
     parser.add_argument('--n-mfcc', dest='n_mfcc', deafult=13,
                         help='Number of MFCC components.')
-    parser.add_argument('--match-threshold', dest='noise_threshold', default=0.45
-                        'Threshold distance to match words.')
+    parser.add_argument('--match-threshold', dest='noise_threshold', default=0.45,
+                        help='Threshold distance to match words.')
     ns = parser.parse_args(args)
     if ns.output is None:
         ns.output = '{0}-umdone{1}'.format(*os.path.splitext(ns.input))
