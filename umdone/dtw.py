@@ -45,7 +45,7 @@ def cost_matrix(x, y, dist_func=l1):
 
     for i in range(n1):
         for j in range(n2):
-            cost[i+1, j+1] += np.min(cost[i, j], cost[i, j+1], cost[i+1, j])
+            cost[i+1, j+1] += min(cost[i, j], cost[i, j+1], cost[i+1, j])
 
     cost = cost[1:, 1:]
     return cost

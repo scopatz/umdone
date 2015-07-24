@@ -13,9 +13,10 @@ def remove_umms(ns):
     bounds = segment.boundaries(x, sr, window_length=ns.window_length, 
                                 threshold=ns.noise_threshold)
     td = discover.load_training_data(ns.train, n=ns.n_mfcc)
-    matches = discover.match(x, bounds, td, n=ns.n_mfcc, threshold=ns.match_threashold)
+    matches = discover.match(x, sr, bounds, td, n=ns.n_mfcc, 
+                             threshold=ns.match_threshold)
     y = segment.remove_slices(x, matches)
-    librosa.output.write_wav('out.wav', y, sr)
+    librosa.output.write_wav(ns.output, y, sr)
     
 
 def main(args=None):

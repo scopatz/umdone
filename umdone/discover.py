@@ -19,7 +19,7 @@ def is_match(clip_mfcc, training_mfccs, threshold=0.45):
     warping. Return True if matches any training data, and False otherwise.
     """
     for training_mfcc in training_mfccs:
-        cost = cost_matrix(clip_mfcc, training_mfcc)
+        cost = dtw.cost_matrix(clip_mfcc, training_mfcc)
         d = dtw.distance(cost=cost)
         norm_d = d / (cost.shape[0] + cost.shape[1])
         if norm_d <= threshold:
@@ -27,7 +27,7 @@ def is_match(clip_mfcc, training_mfccs, threshold=0.45):
     return False
 
 
-def match(x, bounds, training_mfccs, threshold=0.45, n=13):
+def match(x, sr, bounds, training_mfccs, threshold=0.45, n=13):
     """Finds the matches to the training data in x that is in valid the bounds.
     Returns the matched bounds.
     """
