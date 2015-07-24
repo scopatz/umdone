@@ -1,8 +1,6 @@
 """Segements long audio into clips when someone is speaking."""
 import numpy as np
 
-from umdone import dwt
-
 
 def boundaries(x, sr, window_length=0.05, threshold=0.01):
     """Computes the indexes of a wav between which some one is speaking, ie
