@@ -9,14 +9,17 @@ from umdone import discover
 
 
 def remove_umms(ns):
-    x, sr = librosa.load(ns.input, sr=None)
+    x, sr = librosa.load(ns.input, mono=True, sr=None)
     bounds = segment.boundaries(x, sr, window_length=ns.window_length, 
                                 threshold=ns.noise_threshold)
     td = discover.load_training_data(ns.train, n=ns.n_mfcc)
     matches = discover.match(x, sr, bounds, td, n=ns.n_mfcc, 
                              threshold=ns.match_threshold)
-    y = segment.remove_slices(x, matches)
-    librosa.output.write_wav(ns.output, y, sr)
+    del x, sr, bounds, td
+    # read back in to preserve mono/stereo and levels on output
+    x, sr = librosa.load(ns.input, mono=False, sr=None)
+    y = segment.remove_slices(x.T, matches)
+    librosa.output.write_wav(ns.output, y.T, sr, norm=False)
     
 
 def main(args=None):
