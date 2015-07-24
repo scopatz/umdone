@@ -46,6 +46,6 @@ def remove_slices(arr, slices):
         views = [arr[:slices[0][0]]]
         for (_, l), (u, _) in zip(slices[:-1], slices[1:]):
             views.append(arr[l:u])
-        #views.append(arr[slices[-1][1]:])
+        views.append(arr[slices[-1][1]:])
         return np.concatenate(views)
 

@@ -28,13 +28,13 @@ def main(args=None):
     parser.add_argument('-t', '--train', nargs='*', dest='train', 
                         help='list of training files')
     parser.add_argument('--window-length', dest='window_length', default=0.05,
-                        help='Word boundary window length.')
+                        type=float, help='Word boundary window length.')
     parser.add_argument('--noise-threshold', dest='noise_threshold', default=0.01,
-                        help='Noise threshold on words vs quiet.')
-    parser.add_argument('--n-mfcc', dest='n_mfcc', default=13,
+                        type=float, help='Noise threshold on words vs quiet.')
+    parser.add_argument('--n-mfcc', dest='n_mfcc', default=13, type=int, 
                         help='Number of MFCC components.')
     parser.add_argument('--match-threshold', dest='match_threshold', default=0.45,
-                        help='Threshold distance to match words.')
+                        help='Threshold distance to match words.', type=float)
     ns = parser.parse_args(args)
     if ns.output is None:
         ns.output = '{0}-umdone{1}'.format(*os.path.splitext(ns.input))

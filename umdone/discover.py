@@ -32,10 +32,10 @@ def match(x, sr, bounds, training_mfccs, threshold=0.45, n=13):
     Returns the matched bounds.
     """
     matches = []
-    for i, (l, u) in enumerate(bounds):
+    for l, u in bounds:
         clip = x[l:u]
         clip_mfcc = librosa.feature.mfcc(clip, sr, n_mfcc=n).T
         if is_match(clip_mfcc, training_mfccs, threshold=threshold):
             matches.append([l, u])
-            training_mfccs.append(clip_mfcc)
+            #training_mfccs.append(clip_mfcc)  # learn as you go?
     return np.array(matches)
