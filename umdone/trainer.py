@@ -35,6 +35,7 @@ class TrainerModel(object):
         self.raw, self.sr = librosa.load(fname, mono=True, sr=None)
         self.bounds = segment.boundaries(self.raw, self.sr, window_length=window_length, 
                                          threshold=threshold)
+        self.nsegments = len(self.bounds)
 
         # results, keyed by current segement
         self.mfccs = {}
@@ -228,6 +229,10 @@ class TrainerDisplay(object):
         self.select_segment(s+1)
 
     def select_segment(self, s):
+        if s < 0:
+            s = 0
+        elif s >= self.model.nsegments:
+            s = self.nsegments - 1
         self.model.current_segment = s
         clip = self.model.clip
         sound.play(clip, self.model.sr)
