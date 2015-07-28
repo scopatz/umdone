@@ -21,7 +21,7 @@ class TrainerModel(object):
         (0, 'word'),
         (1, 'ummm'),
         (2, 'like'),
-        (3, 'non-word'),
+        (3, 'other non-word'),
         )
 
     def __init__(self, fname, window_length=0.05, threshold=0.01, n_mfcc=13):
@@ -39,7 +39,6 @@ class TrainerModel(object):
         self.nsegments = len(self.bounds)
 
         # results, keyed by current segement
-        self.mfccs = {}
         self.categories = {}
 
     @property
@@ -135,6 +134,10 @@ class TrainerView(urwid.WidgetWrap):
         w = urwid.AttrWrap(w, 'button normal', 'button select')
         return w
 
+    def save_and_exit_program(self, w):
+        self.controller.save()
+        self.exit_program(w)
+
     def exit_program(self, w):
         raise urwid.ExitMainLoop()
 
@@ -164,7 +167,8 @@ class TrainerView(urwid.WidgetWrap):
               urwid.Divider(),
               urwid.LineBox( unicode_checkbox),
               urwid.Divider(),
-              self.button("Quit", self.exit_program),
+              self.button("Save and quit", self.save_and_exit_program),
+              self.button("Quit without saving", self.exit_program),
               ]
         w = urwid.ListBox(urwid.SimpleListWalker(l))
         return w
@@ -191,7 +195,7 @@ class TrainerDisplay(object):
         self.model = TrainerModel(ns.input, window_length=ns.window_length, 
                                   threshold=ns.noise_threshold, n_mfcc=ns.n_mfcc)
         self.view = TrainerView(self)
-        self.select_segment(0)
+        self.view.update_graph()
 
     def select_category(self, cat):
         s = self.model.current_segment 
@@ -206,15 +210,19 @@ class TrainerDisplay(object):
         self.model.current_segment = s
         clip = self.model.clip
         self.view.update_graph()
-        sound.play(clip, self.model.sr)
+        self.loop.set_alarm_in(0.001, lambda w, d: sound.play(clip, self.model.sr))
 
     def offset_current_segment(self, offset):
         s = self.model.current_segment
         s += offset
         self.select_segment(s)
 
+    def save(self):
+        self.model.save()
+
     def main(self):
-        self.loop = urwid.MainLoop(self.view, self.view.palette)
+        self.loop = urwid.MainLoop(self.view, self.view.palette, pop_ups=True)
+        self.loop.set_alarm_in(0.001, lambda w, d: self.select_segment(0))
         self.loop.run()
 
 

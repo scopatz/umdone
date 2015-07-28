@@ -22,7 +22,7 @@ def play_posix(x, sr):
     """
     with tempfile.NamedTemporaryFile() as f:
         librosa.output.write_wav(f.name, x, sr)
-        subprocess.check_output(['mplayer', f.name], stderr=subprocess.STDOUT)
+        subprocess.check_output(['mplayer', f.name, '&'], stderr=subprocess.STDOUT)
 
 
 def play(x, sr):
