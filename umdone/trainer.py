@@ -89,7 +89,7 @@ class TrainerView(urwid.WidgetWrap):
         ('line',         'black',      'light gray', 'standout'),
         ('pg normal',    'white',      'black', 'standout'),
         ('pg complete',  'white',      'dark magenta'),
-        ('pg smooth',    'dark magenta','black')
+        ('pg smooth',    'dark magenta','black'),
         ]
 
     graph_samples_per_bar = 10
@@ -99,14 +99,6 @@ class TrainerView(urwid.WidgetWrap):
     def __init__(self, controller):
         self.controller = controller
         super(TrainerView, self).__init__(self.main_window())
-
-    def get_offset_now(self):
-        if self.start_time is None:
-            return 0
-        if not self.started:
-            return self.offset
-        tdelta = time.time() - self.start_time
-        return int(self.offset + (tdelta*self.graph_offset_per_second))
 
     def update_graph(self, force_update=False):
         o = self.get_offset_now()
@@ -135,7 +127,7 @@ class TrainerView(urwid.WidgetWrap):
                 prog = 1
         else:
             prog = float(o%repeat) / repeat
-        self.animate_progress.set_completion( prog )
+        self.animate_progress.set_completion(prog)
         return True
 
     def on_nav_button(self, button, offset):
@@ -151,13 +143,12 @@ class TrainerView(urwid.WidgetWrap):
 
     def main_shadow(self, w):
         """Wrap a shadow and background around widget w."""
-        bg = urwid.AttrWrap(urwid.SolidFill(u"\u2592"), 'screen edge')
-        shadow = urwid.AttrWrap(urwid.SolidFill(u" "), 'main shadow')
-
-        bg = urwid.Overlay( shadow, bg,
+        bg = urwid.AttrWrap(urwid.SolidFill("\u2592"), 'screen edge')
+        shadow = urwid.AttrWrap(urwid.SolidFill(" "), 'main shadow')
+        bg = urwid.Overlay(shadow, bg,
             ('fixed left', 3), ('fixed right', 1),
             ('fixed top', 2), ('fixed bottom', 1))
-        w = urwid.Overlay( w, bg,
+        w = urwid.Overlay(w, bg,
             ('fixed left', 2), ('fixed right', 3),
             ('fixed top', 1), ('fixed bottom', 2))
         return w
@@ -166,7 +157,7 @@ class TrainerView(urwid.WidgetWrap):
         satt = None
         if smooth:
             satt = {(1,0): 'bg 1 smooth', (2,0): 'bg 2 smooth'}
-        w = urwid.BarGraph(['bg background','bg 1','bg 2'], satt=satt)
+        w = urwid.BarGraph(['bg background', 'bg 1', 'bg 2'], satt=satt)
         return w
 
     def button(self, t, fn, *args, **kwargs):
@@ -210,13 +201,13 @@ class TrainerView(urwid.WidgetWrap):
 
     def main_window(self):
         self.graph = self.bar_graph()
-        self.graph_wrap = urwid.WidgetWrap( self.graph )
+        self.graph_wrap = urwid.WidgetWrap(self.graph)
         vline = urwid.AttrWrap(urwid.SolidFill('\u2502'), 'line')
         c = self.graph_controls()
-        w = urwid.Columns([('weight', 2, self.graph_wrap),
-                           ('fixed', 1, vline), c],
-            dividechars=1, focus_column=2)
-        w = urwid.Padding(w, ('fixed left', 1),('fixed right', 0))
+        w = urwid.Columns([('weight', 1, self.graph_wrap),
+                           ('fixed', 1, vline), (42, c)],
+                           dividechars=1, focus_column=2)
+        w = urwid.Padding(w, ('fixed left', 1), ('fixed right', 1))
         w = urwid.AttrWrap(w,'body')
         w = urwid.LineBox(w)
         w = urwid.AttrWrap(w,'line')
