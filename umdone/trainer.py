@@ -37,6 +37,7 @@ class TrainerModel(object):
         self.bounds = segment.boundaries(self.raw, self.sr, window_length=window_length, 
                                          threshold=threshold)
         self.nsegments = len(self.bounds)
+        self.runtime = len(self.raw) / self.sr
 
         # results, keyed by current segement
         self.categories = {}
@@ -99,7 +100,7 @@ class TrainerView(urwid.WidgetWrap):
                 l.append([value, 0])
         self.graph.set_data(l, max_value)
 
-    def set_status(self):
+    def update_status(self):
         model = self.controller.model
         if model.current_segment in model.categories:
             c = model.valid_categories[model.categories[model.current_segment]][1]
@@ -112,6 +113,15 @@ class TrainerView(urwid.WidgetWrap):
              ).format(model.current_segment + 1, model.nsegments, 
                       len(model.clip) / model.sr, c)
         self.status.set_text(s)
+
+    def update_progress(self):
+        model = self.controller.model
+        self.progress.set_completion(model.bounds[model.current_segment][0]/model.sr)
+
+    def update_segment(self):
+        self.update_graph()
+        self.update_status()
+        self.update_progress()
 
     def on_nav_button(self, button, offset):
         self.controller.offset_current_segment(offset)
@@ -148,6 +158,12 @@ class TrainerView(urwid.WidgetWrap):
         w = urwid.AttrWrap(w, 'button normal', 'button select')
         return w
 
+    def progress_bar(self, done=1, smooth=False):
+        if smooth:
+            return urwid.ProgressBar('pg normal', 'pg complete', 0, done, 'pg smooth')
+        else:
+            return urwid.ProgressBar('pg normal', 'pg complete', 0, done)
+
     def save_and_exit_program(self, w):
         self.controller.save()
         self.exit_program(w)
@@ -167,11 +183,8 @@ class TrainerView(urwid.WidgetWrap):
             self.button(" next ", self.on_nav_button, 1),
             ], 10, 3, 0, 'center')
 
-        if urwid.get_encoding_mode() == "utf8":
-            unicode_checkbox = urwid.CheckBox("Enable Unicode Graphics",
-                                              on_state_change=self.on_unicode_checkbox)
-        else:
-            unicode_checkbox = urwid.Text("UTF-8 encoding not detected")
+        self.progress = self.progress_bar(done=self.controller.model.runtime)
+        self.progress_wrap = urwid.WidgetWrap(self.progress)
 
         l = [urwid.Text("Categories", align="center")]
         l += self.category_buttons
@@ -180,6 +193,8 @@ class TrainerView(urwid.WidgetWrap):
               nav_controls,
               urwid.Divider(),
               urwid.LineBox(self.status),
+              urwid.Divider(),
+              self.progress_wrap,
               urwid.Divider(),
               self.button("Save and quit", self.save_and_exit_program),
               self.button("Quit without saving", self.exit_program),
@@ -209,8 +224,7 @@ class TrainerDisplay(object):
         self.model = TrainerModel(ns.input, window_length=ns.window_length, 
                                   threshold=ns.noise_threshold, n_mfcc=ns.n_mfcc)
         self.view = TrainerView(self)
-        self.view.update_graph()
-        self.view.set_status()
+        self.view.update_segment()
 
     def select_category(self, cat):
         s = self.model.current_segment 
@@ -224,8 +238,7 @@ class TrainerDisplay(object):
             s = self.model.nsegments - 1
         self.model.current_segment = s
         clip = self.model.clip
-        self.view.update_graph()
-        self.view.set_status()
+        self.view.update_segment()
         self.loop.set_alarm_in(0.001, lambda w, d: sound.play(clip, self.model.sr))
 
     def offset_current_segment(self, offset):
