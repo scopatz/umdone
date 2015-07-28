@@ -53,22 +53,6 @@ class TrainerModel(object):
     def save(self):
         pass
 
-    def get_data(self, offset, r):
-        """
-        Return the data in [offset:offset+r], the maximum value
-        for items returned, and the offset at which the data
-        repeats.
-        """
-        l = []
-        d = self.data[self.current_mode]
-        while r:
-            offset = offset % len(d)
-            segment = d[offset:offset+r]
-            r -= len(segment)
-            offset += len(segment)
-            l += segment
-        return l, self.data_max_value, len(d)
-
 
 class TrainerView(urwid.WidgetWrap):
     """
@@ -100,7 +84,7 @@ class TrainerView(urwid.WidgetWrap):
         self.controller = controller
         super(TrainerView, self).__init__(self.main_window())
 
-    def update_graph(self, force_update=False):
+    def update_graph(self):
         nbars = self.graph_num_bars
         d = np.abs(self.controller.model.clip)
         win_size = int(len(d) / nbars)
