@@ -6,6 +6,7 @@ from argparse import ArgumentParser
 
 import urwid
 import librosa
+import numpy as np
 import tables as tb
 
 from umdone import sound
@@ -93,43 +94,27 @@ class TrainerView(urwid.WidgetWrap):
         ('pg smooth',    'dark magenta','black'),
         ]
 
-    graph_samples_per_bar = 10
-    graph_num_bars = 5
-    graph_offset_per_second = 5
+    graph_num_bars = 100
 
     def __init__(self, controller):
         self.controller = controller
         super(TrainerView, self).__init__(self.main_window())
 
     def update_graph(self, force_update=False):
-        o = self.get_offset_now()
-        if o == self.last_offset and not force_update:
-            return False
-        self.last_offset = o
-        gspb = self.graph_samples_per_bar
-        r = gspb * self.graph_num_bars
-        d, max_value, repeat = self.controller.get_data( o, r )
+        nbars = self.graph_num_bars
+        d = np.abs(self.controller.model.clip)
+        win_size = int(len(d) / nbars)
+        d = d[:win_size*nbars]
+        d.shape = (nbars, win_size)
+        d = d.sum(axis=1)
         l = []
-        for n in range(self.graph_num_bars):
-            value = sum(d[n*gspb:(n+1)*gspb])/gspb
-            # toggle between two bar types
+        max_value = d.max()
+        for n, value in enumerate(d):  # toggle between two bar colors
             if n & 1:
-                l.append([0,value])
+                l.append([0, value])
             else:
-                l.append([value,0])
-        self.graph.set_data(l,max_value)
-
-        # also update progress
-        if (o//repeat)&1:
-            # show 100% for first half, 0 for second half
-            if o%repeat > repeat//2:
-                prog = 0
-            else:
-                prog = 1
-        else:
-            prog = float(o%repeat) / repeat
-        self.animate_progress.set_completion(prog)
-        return True
+                l.append([value, 0])
+        self.graph.set_data(l, max_value)
 
     def on_nav_button(self, button, offset):
         self.controller.offset_current_segment(offset)
@@ -140,7 +125,7 @@ class TrainerView(urwid.WidgetWrap):
     def on_unicode_checkbox(self, w, state):
         self.graph = self.bar_graph(state)
         self.graph_wrap._w = self.graph
-        self.update_graph(True)
+        self.update_graph()
 
     def main_shadow(self, w):
         """Wrap a shadow and background around widget w."""
@@ -222,6 +207,7 @@ class TrainerDisplay(object):
         self.model = TrainerModel(ns.input, window_length=ns.window_length, 
                                   threshold=ns.noise_threshold, n_mfcc=ns.n_mfcc)
         self.view = TrainerView(self)
+        self.select_segment(0)
 
     def select_category(self, cat):
         s = self.model.current_segment 
@@ -232,9 +218,10 @@ class TrainerDisplay(object):
         if s < 0:
             s = 0
         elif s >= self.model.nsegments:
-            s = self.nsegments - 1
+            s = self.model.nsegments - 1
         self.model.current_segment = s
         clip = self.model.clip
+        self.view.update_graph()
         sound.play(clip, self.model.sr)
 
     def offset_current_segment(self, offset):
