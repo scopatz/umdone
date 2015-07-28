@@ -52,7 +52,6 @@ class TrainerModel(object):
     def save(self):
         pass
 
-
 class TrainerView(urwid.WidgetWrap):
     """
     A class responsible for providing the application's interface and
@@ -81,6 +80,7 @@ class TrainerView(urwid.WidgetWrap):
 
     def __init__(self, controller):
         self.controller = controller
+        self.status = urwid.Text("Status")
         super(TrainerView, self).__init__(self.main_window())
 
     def update_graph(self):
@@ -98,6 +98,20 @@ class TrainerView(urwid.WidgetWrap):
             else:
                 l.append([value, 0])
         self.graph.set_data(l, max_value)
+
+    def set_status(self):
+        model = self.controller.model
+        if model.current_segment in model.categories:
+            c = model.valid_categories[model.categories[model.current_segment]][1]
+            c = 'Categorized as ' + c
+        else:
+            c = 'Uncategorized'
+        s = ("Clip {0} of {1}\n"
+             "Duration {2:.3} sec\n"
+             "{3}"
+             ).format(model.current_segment + 1, model.nsegments, 
+                      len(model.clip) / model.sr, c)
+        self.status.set_text(s)
 
     def on_nav_button(self, button, offset):
         self.controller.offset_current_segment(offset)
@@ -165,7 +179,7 @@ class TrainerView(urwid.WidgetWrap):
               urwid.Text("Navigation", align="center"),
               nav_controls,
               urwid.Divider(),
-              urwid.LineBox( unicode_checkbox),
+              urwid.LineBox(self.status),
               urwid.Divider(),
               self.button("Save and quit", self.save_and_exit_program),
               self.button("Quit without saving", self.exit_program),
@@ -196,6 +210,7 @@ class TrainerDisplay(object):
                                   threshold=ns.noise_threshold, n_mfcc=ns.n_mfcc)
         self.view = TrainerView(self)
         self.view.update_graph()
+        self.view.set_status()
 
     def select_category(self, cat):
         s = self.model.current_segment 
@@ -210,6 +225,7 @@ class TrainerDisplay(object):
         self.model.current_segment = s
         clip = self.model.clip
         self.view.update_graph()
+        self.view.set_status()
         self.loop.set_alarm_in(0.001, lambda w, d: sound.play(clip, self.model.sr))
 
     def offset_current_segment(self, offset):
