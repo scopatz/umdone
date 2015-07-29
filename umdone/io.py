@@ -76,7 +76,7 @@ def _unflatten_mfccs(flat_mfccs, lens):
 def load(fname):
     with tb.open_file(fname, 'r') as f:
         dists = f.root.distances[:]
-        cats = f.root.categories
+        cats = f.root.categories[:]
         lens = f.root.mfcc_lengths[:]
         flat_mfccs = f.root.mfccs[:]
     mfccs = _unflatten_mfccs(flat_mfccs, lens)

@@ -11,7 +11,7 @@ def match(x, sr, bounds, mfccs, distances, categories):
     Returns the matched bounds.
     """
     # data setup
-    n_mfcc = mfccs.shape[1]
+    n_mfcc = mfccs[0].shape[1]
     d = np.empty((len(bounds), len(distances)), 'f8')
     for i, (l, u) in enumerate(bounds):
         clip = x[l:u]
