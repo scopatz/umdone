@@ -23,7 +23,7 @@ def save(fname, mfccs, categories, distances=None):
     # data prep
     n = len(mfccs)
     categories = np.asarray(categories)
-    mfcc_lengths = np.empty(n, int)
+    mfcc_lens = np.empty(n, int)
     for i, mfcc in enumerate(mfccs):
         mfcc_lens[i] = mfcc.shape[0]
     flat_mfccs = np.concatenate(mfccs, axis=0)

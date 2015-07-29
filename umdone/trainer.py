@@ -70,7 +70,7 @@ class TrainerModel(object):
     def compute_distances(self, outfile, callback=None):
         mfccs = self.mfccs
         if os.path.isfile(outfile):
-            mfccs = umdone.io._load_mfccs(fname) + mfccs
+            mfccs = umdone.io._load_mfccs(outfile) + mfccs
         self.distances = dtw.distance_matrix(mfccs, callback=callback)
         return self.distances
 
