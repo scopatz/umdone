@@ -55,30 +55,20 @@ class TrainerModel(object):
         sr = self.sr
         n_mfcc = self.n_mfcc
         n = len(self.categories)
-        self.mfccs = mfccs = {}
-        for status, (seg, cat) in enumerate(self.categories.items(), start=1):
+        self.mfccs = mfccs = []
+        order = self.segement_order()
+        for status, seg in enumerate(order, start=1):
             l, u = self.bounds[seg]
             clip = self.raw[l:u]
-            mfccs[seg] = librosa.feature.mfcc(clip, sr, n_mfcc=n_mfcc).T
+            mfcc = librosa.feature.mfcc(clip, sr, n_mfcc=n_mfcc).T
+            mfccs.append(mfcc)
             if callback is not None:
                 callback(status/n)
         return mfccs
 
     def compute_distances(self, callback=None):
-        n = len(self.categories)
-        stat_numer = 0
-        stat_denom = (n**2) / 2
-        mfccs = self.mfccs
-        self.distances = dists = np.empty((n, n), 'f8')
-        order = self.segement_order()
-        for i in range(n):
-            for j in range(i, n):
-                # this matrix is symmetric by def.
-                dists[i,j] = dists[j,i] = dtw.distance(mfccs[order[i]], mfccs[order[j]])
-                if callback is not None:
-                    stat_numer += 1
-                    callback(stat_numer / stat_denom)
-        return dists
+        self.distances = dtw.distance_matrix(self.mfccs, callback=callback)
+        return self.distances
 
     def save(self, outfile):
         n = len(self.categories)

@@ -133,3 +133,19 @@ def dtw(x, y, dist_func=l1):
     d = distance(cost=cost)
     w = warp_path(cost)
     return d, cost, w
+
+
+def distance_matrix(mfccs, callback=None):
+    """Computes a distance matrix from a list mfccs"""
+    n = len(mfccs)
+    stat_numer = 0
+    stat_denom = (n**2) / 2
+    dists = np.empty((n, n), 'f8')
+    for i in range(n):
+        for j in range(i, n):
+            # this matrix is symmetric by def.
+            dists[i,j] = dists[j,i] = distance(mfccs[i], mfccs[j])
+            if callback is not None:
+                stat_numer += 1
+                callback(stat_numer / stat_denom)
+    return dists
