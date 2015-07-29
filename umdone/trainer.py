@@ -80,8 +80,26 @@ class TrainerModel(object):
                     callback(stat_numer / stat_denom)
         return dists
 
-    def save(self):
-        pass
+    def save(self, outfile):
+        n = len(self.categories)
+        mfccs = self.mfccs
+        res_cats = np.empty(n, int)
+        res_mfcc_lens = np.empty(n, int)
+        order = self.segement_order()
+        for i, seg in enumerate(order):
+            res_cats[i] = self.categories[seg]
+            res_mfcc_lens[i] = mfccs[seg].shape[0]
+        res_mfccs = np.empty((res_mfcc_lens.sum(), self.n_mfcc), 'f8')
+        l_prev = 0
+        for i, seg in enumerate(order):
+            l = res_mfcc_lens[i] + l_prev
+            res_mfccs[l_prev:l] = mfccs[seg]
+            l_prev = l
+        with tb.open_file(outfile, 'a') as f:
+            f.create_earray('/', 'categories', shape=(0,), obj=res_cats)
+            f.create_earray('/', 'mfcc_lengths', shape=(0,), obj=res_mfcc_lens)
+            f.create_earray('/', 'mfccs', shape=(0, self.n_mfcc), obj=res_mfccs)
+            f.create_array('/', 'distances', obj=self.distances)  # not extendable! 
 
 
 class TrainerView(urwid.WidgetWrap):
@@ -256,6 +274,7 @@ class TrainerView(urwid.WidgetWrap):
 class TrainerDisplay(object):
 
     def __init__(self, ns):
+        self.ns = ns
         self.model = TrainerModel(ns.input, window_length=ns.window_length, 
                                   threshold=ns.noise_threshold, n_mfcc=ns.n_mfcc)
         self.view = TrainerView(self)
@@ -289,7 +308,7 @@ class TrainerDisplay(object):
         view.status.set_text('\nComputing distance matrix\n')
         model.compute_distances(view.progress.set_completion)
         view.status.set_text('\nSaving\n')
-        model.save()
+        model.save(self.ns.output)
 
     def main(self):
         self.loop = urwid.MainLoop(self.view, self.view.palette, pop_ups=True)
