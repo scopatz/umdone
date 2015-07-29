@@ -32,6 +32,7 @@ def main():
         classifiers=['Programming Language :: Python :: 3'],
         packages=['umdone'],
         scripts=['scripts/umdone'],
+        zip_safe=False,
         )
     if HAVE_SETUPTOOLS:
         skw['setup_requires'] = []
