@@ -4,6 +4,7 @@ from argparse import ArgumentParser
 
 import librosa
 
+import umdone.io
 from umdone import cli
 from umdone import trainer
 from umdone import segment
@@ -16,17 +17,19 @@ def remove_umms(ns):
     x, sr = librosa.load(ns.input, mono=True, sr=None)
     bounds = segment.boundaries(x, sr, window_length=ns.window_length, 
                                 threshold=ns.noise_threshold)
-    td = discover.load_training_data(ns.train, n=ns.n_mfcc)
-    matches = discover.match(x, sr, bounds, td, n=ns.n_mfcc, 
-                             threshold=ns.match_threshold)
-    del x, sr, bounds, td
+    mfccs, distances, categories = umdone.io.load(ns.train)
+    matches = discover.match(x, sr, bounds, mfccs, distances, categories) 
+    del x, sr, bounds, mfccs, distances, categories
     # read back in to preserve mono/stereo and levels on output
     x, sr = librosa.load(ns.input, mono=False, sr=None)
     y = segment.remove_slices(x.T, matches)
     librosa.output.write_wav(ns.output, y.T, sr, norm=False)
 
+
 def remove_add_arguments(parser):
     cli.add_output(parser)
+    cli.add_window_length(parser)
+    cli.add_noise_threshold(parser)
     cli.add_train_argument(parser)
     cli.add_input(parser)
 
