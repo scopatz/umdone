@@ -9,6 +9,7 @@ import librosa
 import numpy as np
 import tables as tb
 
+import umdone.io
 from umdone import dtw
 from umdone import sound
 from umdone import segment
@@ -66,30 +67,17 @@ class TrainerModel(object):
                 callback(status/n)
         return mfccs
 
-    def compute_distances(self, callback=None):
-        self.distances = dtw.distance_matrix(self.mfccs, callback=callback)
+    def compute_distances(self, outfile, callback=None):
+        mfccs = self.mfccs
+        if os.path.isfile(outfile):
+            mfccs = umdone.io._load_mfccs(fname) + mfccs
+        self.distances = dtw.distance_matrix(mfccs, callback=callback)
         return self.distances
 
     def save(self, outfile):
-        n = len(self.categories)
-        mfccs = self.mfccs
-        res_cats = np.empty(n, int)
-        res_mfcc_lens = np.empty(n, int)
         order = self.segement_order()
-        for i, seg in enumerate(order):
-            res_cats[i] = self.categories[seg]
-            res_mfcc_lens[i] = mfccs[seg].shape[0]
-        res_mfccs = np.empty((res_mfcc_lens.sum(), self.n_mfcc), 'f8')
-        l_prev = 0
-        for i, seg in enumerate(order):
-            l = res_mfcc_lens[i] + l_prev
-            res_mfccs[l_prev:l] = mfccs[seg]
-            l_prev = l
-        with tb.open_file(outfile, 'a') as f:
-            f.create_earray('/', 'categories', shape=(0,), obj=res_cats)
-            f.create_earray('/', 'mfcc_lengths', shape=(0,), obj=res_mfcc_lens)
-            f.create_earray('/', 'mfccs', shape=(0, self.n_mfcc), obj=res_mfccs)
-            f.create_array('/', 'distances', obj=self.distances)  # not extendable! 
+        cats = [self.categories[seg] for seg in order]
+        umdone.io.save(outfile, self.mfccs, cats, distances=self.distances)
 
 
 class TrainerView(urwid.WidgetWrap):
@@ -296,7 +284,7 @@ class TrainerDisplay(object):
         view.status.set_text('\nComputing MFCCs\n')
         model.compute_mfccs(view.progress.set_completion)
         view.status.set_text('\nComputing distance matrix\n')
-        model.compute_distances(view.progress.set_completion)
+        model.compute_distances(self.ns.output, view.progress.set_completion)
         view.status.set_text('\nSaving\n')
         model.save(self.ns.output)
 
