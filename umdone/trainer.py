@@ -10,6 +10,7 @@ import numpy as np
 import tables as tb
 
 import umdone.io
+from umdone import cli
 from umdone import dtw
 from umdone import sound
 from umdone import segment
@@ -294,19 +295,20 @@ class TrainerDisplay(object):
         self.loop.run()
 
 
-def main(args=None):
+def add_arguments(parser):
+    cli.add_output(parser)
+    cli.add_window_length(parser)
+    cli.add_noise_threshold(parser)
+    cli.add_n_mfcc(parser)
+    cli.add_input(parser)
+
+
+def main(ns=None, args=None):
     """Entry point for umdone trainer."""
-    parser = ArgumentParser('umdone-trainer')
-    parser.add_argument('input', help='input file')
-    parser.add_argument('-o', '--output', dest='output', default=None, 
-                        help='Output file.')
-    parser.add_argument('--window-length', dest='window_length', default=0.05,
-                        type=float, help='Word boundary window length.')
-    parser.add_argument('--noise-threshold', dest='noise_threshold', default=0.01,
-                        type=float, help='Noise threshold on words vs quiet.')
-    parser.add_argument('--n-mfcc', dest='n_mfcc', default=13, type=int, 
-                        help='Number of MFCC components.')
-    ns = parser.parse_args(args)
+    if ns is None:
+        parser = ArgumentParser('umdone-trainer')
+        add_arguments(parser)
+        ns = parser.parse_args(args)
     if ns.output is None:
         ns.output = '{0}-umdone-training.h5'.format(os.path.splitext(ns.input)[0])
     TrainerDisplay(ns).main()
