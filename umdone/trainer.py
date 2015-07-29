@@ -74,7 +74,7 @@ class TrainerModel(object):
         for i in range(n):
             for j in range(i, n):
                 # this matrix is symmetric by def.
-                dists[i,j] = dists[j,i] = dtw.distance(mfccs[order[i]], mfcc[order[j]])
+                dists[i,j] = dists[j,i] = dtw.distance(mfccs[order[i]], mfccs[order[j]])
                 if callback is not None:
                     stat_numer += 1
                     callback(stat_numer / stat_denom)
@@ -82,6 +82,7 @@ class TrainerModel(object):
 
     def save(self):
         pass
+
 
 class TrainerView(urwid.WidgetWrap):
     """
@@ -195,6 +196,10 @@ class TrainerView(urwid.WidgetWrap):
             return urwid.ProgressBar('pg normal', 'pg complete', 0, done)
 
     def save_and_exit_program(self, w):
+        # replace progress bar
+        self.progress = self.progress_bar(done=1.0)
+        self.progress_wrap._w = self.progress
+        # save and exit
         self.controller.save()
         self.exit_program(w)
 
@@ -277,7 +282,14 @@ class TrainerDisplay(object):
         self.select_segment(s)
 
     def save(self):
-        self.model.save()
+        model = self.model
+        view = self.view
+        view.status.set_text('\nComputing MFCCs\n')
+        model.compute_mfccs(view.progress.set_completion)
+        view.status.set_text('\nComputing distance matrix\n')
+        model.compute_distances(view.progress.set_completion)
+        view.status.set_text('\nSaving\n')
+        model.save()
 
     def main(self):
         self.loop = urwid.MainLoop(self.view, self.view.palette, pop_ups=True)
