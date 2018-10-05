@@ -26,11 +26,11 @@ class MPlayerWorker(Thread):
         self.sr = sr
         self.daemon = True
         self.start()
-        
+
     def run(self):
         with tempfile.NamedTemporaryFile() as f:
             librosa.output.write_wav(f.name, self.clip, self.sr)
-            p = subprocess.Popen(['nohup', 'mplayer', f.name], 
+            p = subprocess.Popen(['nohup', 'mplayer', f.name],
                                  stdout=subprocess.DEVNULL,
                                  stderr=subprocess.DEVNULL)
             while p.poll() is None:
@@ -38,7 +38,7 @@ class MPlayerWorker(Thread):
 
 
 def play_posix(x, sr):
-    """Play's a numpy array on Linux that represents a wav file with a given 
+    """Play's a numpy array on Linux that represents a wav file with a given
     sample rate.
     """
     return MPlayerWorker(x, sr)
