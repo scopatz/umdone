@@ -4,8 +4,10 @@ import io
 import tempfile
 import subprocess
 from threading import Thread
+from collections.abc import Iterable
 
 import librosa
+import librosa.core
 from scipy.io import wavfile
 
 
@@ -47,6 +49,26 @@ def play_posix(x, sr):
 def play(x, sr):
     """Play's a numpy array that represents a wav file with a given sample rate."""
     play_posix(x, sr)
+
+
+class Audio:
+    """A container for audio"""
+
+    def __init__(self, data=None, sr=None):
+        self.sr = sr
+        if data is None:
+            self.data = None
+        elif isinstance(data, str):
+            self.load(data)
+        elif isinstance(data, Iterable):
+            self.data = data
+        else:
+            raise ValueError('audio data must be None, str, or iterable; got '
+                             + str(type(data)))
+
+    def load(self, filename):
+        """Loads audio from a file."""
+        self.data, self.sr = librosa.core.load(filename)
 
 
 if __name__ == '__main__':
