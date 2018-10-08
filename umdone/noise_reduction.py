@@ -59,13 +59,12 @@ def reduce_noise(noisy, outfile=None):
     mask = intervals_to_mask(silent_intervals, len(noisy.data))
     D_silent = librosa.stft(noisy.data[mask])
     D_noisy = librosa.stft(noisy.data)
-    D_nr = -np.max(D_silent, axis=1)[:,np.newaxis] + D_full
+    D_nr = -np.max(D_silent, axis=1)[:,np.newaxis] + D_noisy
     nr = librosa.core.istft(D_nr)
     nr = Audio(nr, noisy.sr)
     if outfile is not None:
         nr.save(outfile)
     return nr
-
 
 
 _PARSER = None
