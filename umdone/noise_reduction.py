@@ -28,6 +28,14 @@ def complement_intervals(intervals, size=None):
     return comp
 
 
+def intervals_to_mask(intervals, size):
+    """Returns numpy boolean mask from intervals array."""
+    mask = np.zeros(size, bool)
+    for start, end in intervals:
+        mask[start:end+1] = True
+    return mask
+
+
 def reduce_noise(noisy, outfile=None):
     """Reduces noise in audio
 
@@ -48,7 +56,15 @@ def reduce_noise(noisy, outfile=None):
     non_silent_intervals = librosa.effects.split(noisy.data)
     silent_intervals = complement_intervals(non_silent_intervals,
                                             size=len(noisy.data))
-    return silent_intervals
+    mask = intervals_to_mask(silent_intervals, len(noisy.data))
+    D_silent = librosa.stft(noisy.data[mask])
+    D_noisy = librosa.stft(noisy.data)
+    D_nr = -np.max(D_silent, axis=1)[:,np.newaxis] + D_full
+    nr = librosa.core.istft(D_nr)
+    nr = Audio(nr, noisy.sr)
+    if outfile is not None:
+        nr.save(outfile)
+    return nr
 
 
 
@@ -70,8 +86,7 @@ def main(args=None):
     """Main noise reduction"""
     parser = _make_parser()
     ns = parser.parse_args(args=args)
-    noisy = librosa.core.load(ns.input)
-
+    reduce_noise(ns.input, ns.output)
 
 
 if __name__ == '__main__':

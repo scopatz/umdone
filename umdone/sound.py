@@ -8,6 +8,7 @@ from collections.abc import Iterable
 
 import librosa
 import librosa.core
+import librosa.output
 from scipy.io import wavfile
 
 
@@ -69,6 +70,9 @@ class Audio:
     def load(self, filename):
         """Loads audio from a file."""
         self.data, self.sr = librosa.core.load(filename)
+
+    def save(self, filename):
+        librosa.output.write_wav(filename, self.data, self.sr, norm=True)
 
 
 if __name__ == '__main__':
