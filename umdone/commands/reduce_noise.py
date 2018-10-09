@@ -3,6 +3,8 @@ from argparse import ArgumentParser
 
 from lazyasd import lazyobject
 
+from xonsh.tools import print_color
+
 from umdone.sound import Audio
 from umdone.commands import audio_io
 
@@ -27,6 +29,7 @@ def main(audio_in, args, stdin=None, stdout=None, stderr=None, spec=None):
     ns = PARSER.parse_args(args)
     if audio_in is None and ns.path is not None:
         audio_in = Audio(ns.path)
+    print_color('{YELLOW}reducing noise{NO_COLOR}', file=stderr)
     from umdone.noise_reduction import reduce_noise
     audio_out = reduce_noise(audio_in, norm=ns.norm)
     return audio_out
