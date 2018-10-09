@@ -2,6 +2,7 @@
 from __future__ import unicode_literals
 import io
 import os
+import sys
 import tempfile
 import subprocess
 from threading import Thread
@@ -11,6 +12,8 @@ import librosa
 import librosa.core
 import librosa.output
 from scipy.io import wavfile
+
+from xonsh.tools import print_color
 
 from umdone.tools import cache
 
@@ -62,16 +65,19 @@ def download(url):
     local path downloaded to.
     """
     import requests
-
+    outfile = os.path.join($UMDONE_CAHE_DIR, os.path.basename(url))
+    print_color('Downloading {YELLOW}' + url + '{NO_COLOR} to {GREEN}' + outfile
+                + '{NO_COLOR}...', file=sys.stderr)
+    r = requests.get(url)
+    with open(outfile, 'wb') as f:
+        f.write(r.content)
+    return outfile
 
 
 @cache
 def load(path):
-    """Loads a file from a local file or url.
-This function is cached
-    in order to prevent redownloading the same file, or
-re-decoding
-    files in certain formats, such as MP3.
+    """Loads a file from a local file or url. This function is cached in order
+    to prevent re-decoding files in certain formats, such as MP3.
 
     Parameters
     ----------
@@ -85,8 +91,11 @@ re-decoding
     sr : int
         Sampling rate to go with data
     """
-
-
+    if path.startswith('http'):
+        path = download(path)
+    print_color('Loading {GREEN}' + path + '{NO_COLOR}', file=sys.stderr)
+    data, sr = librosa.core.load(path)
+    return data, sr
 
 
 class Audio:
@@ -105,8 +114,8 @@ class Audio:
                              + str(type(data)))
 
     def load(self, filename):
-        """Loads audio from a file."""
-        self.data, self.sr = librosa.core.load(filename)
+        """Loads audio from a file or URL."""
+        self.data, self.sr = load(filename)
 
     def save(self, filename):
         librosa.output.write_wav(filename, self.data, self.sr, norm=True)
@@ -114,5 +123,5 @@ class Audio:
 
 if __name__ == '__main__':
     import sys
-    x, sr = librosa.core.load(sys.argv[1])
+    x, sr = load(sys.argv[1])
     play(x, sr)

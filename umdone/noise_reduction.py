@@ -7,6 +7,7 @@ import librosa.util
 import librosa.effects
 
 from umdone import cli
+from umdone.tools import cache
 from umdone.sound import Audio
 
 
@@ -37,6 +38,7 @@ def intervals_to_mask(intervals, size):
     return mask
 
 
+@cache
 def reduce_noise(noisy, outfile=None, norm=True):
     """Reduces noise in audio
 
