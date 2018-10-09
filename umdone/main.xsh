@@ -1,14 +1,37 @@
 """Main functionality for umdone."""
 import os
+import builtins
 from argparse import ArgumentParser
 
+from xonsh.codecache import run_script_with_cache, run_code_with_cache
+
 import umdone
+from umdone.commands import swap_aliases
+
+
+def run(file=None, command=None):
+    shell = builtins.__xonsh__.shell
+    if file is not None:
+        # run a script contained in a file
+        path = os.path.abspath(os.path.expanduser(file))
+        if os.path.isfile(path):
+            $XONSH_SOURCE = path
+            shell.ctx.update({"__file__": file, "__name__": "__main__"})
+            run_script_with_cache(
+                file, shell.execer, glb=shell.ctx, loc=None, mode="exec"
+            )
+        else:
+            print("umdone: {0}: No such file or directory.".format(file))
+    elif command is not None:
+        run_code_with_cache(command.lstrip(), shell.execer, mode="single")
+    else:
+        raise RuntimeError('Either a script file or a command (-c) must be given')
 
 
 def main(args=None):
     """Main umdone entry point."""
-    parser = ArgumentParser('umdone')
-    p.add_argument(
+    parser = ArgumentParser('umdone', add_help=False)
+    parser.add_argument(
         "-h",
         "--help",
         dest="help",
@@ -16,7 +39,7 @@ def main(args=None):
         default=False,
         help="show help and exit",
     )
-    p.add_argument(
+    parser.add_argument(
         "-V",
         "--version",
         dest="version",
@@ -24,7 +47,7 @@ def main(args=None):
         default=False,
         help="show version information and exit",
     )
-    p.add_argument(
+    parser.add_argument(
         "-D",
         dest="defines",
         help="define an environment variable, in the form of "
@@ -33,7 +56,7 @@ def main(args=None):
         action="append",
         default=None,
     )
-    p.add_argument(
+    parser.add_argument(
         "-c",
         help="Run a single command and exit",
         dest="command",
@@ -50,8 +73,6 @@ def main(args=None):
 
     # parse the commands
     ns = parser.parse_args(args)
-
-    # execute the commands
     if ns.help:
         parser.print_help()
         parser.exit()
@@ -59,8 +80,11 @@ def main(args=None):
         version = "/".join(("umdone", umdone.__version__))
         print(version)
         parser.exit()
-    if ns.defines is not None:
-        ${...}.update([x.split("=", 1) for x in ns.defines])
+    defs = {} if ns.defines is None else [x.split("=", 1) for x in ns.defines]
+
+    # execute the commands
+    with ${...}.swap(defs), swap_aliases():
+        run(file=ns.file, command=ns.command)
 
 
 if __name__ == '__main__':
