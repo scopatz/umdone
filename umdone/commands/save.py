@@ -1,4 +1,5 @@
 """Save pipeline command"""
+import sys
 from argparse import ArgumentParser
 
 from lazyasd import lazyobject
@@ -25,7 +26,7 @@ def main(ain, args, stdin=None, stdout=None, stderr=None, spec=None):
     """Saves an audio file"""
     ns = PARSER.parse_args(args)
     print_color('Saving audio to {GREEN}' + ns.outfile + '{NO_COLOR}',
-                file=stderr, flush=True)
+                file=sys.stderr, flush=True)
     if ain is None and ns.infile is not None:
         ain = Audio(ns.infile)
     ain.save(ns.outfile)

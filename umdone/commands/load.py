@@ -1,4 +1,5 @@
 """Load pipeline command"""
+import sys
 from argparse import ArgumentParser
 
 from lazyasd import lazyobject
@@ -21,5 +22,5 @@ def main(args, stdin=None, stdout=None, stderr=None, spec=None):
     """Loads an audio file"""
     ns = PARSER.parse_args(args)
     print_color('Loading {GREEN}' + ns.path + '{NO_COLOR}',
-                file=stderr, flush=True)
+                file=sys.stderr, flush=True)
     return Audio(ns.path)
