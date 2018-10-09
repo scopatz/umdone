@@ -23,6 +23,7 @@ def _stash_get_audio(stdin, spec):
             break
     else:
         audio = None
+        print('no audio in pipeline')
     if spec.last_in_pipeline:
         AUDIO_PIPELINE_STASH.clear()
     return audio
@@ -35,7 +36,7 @@ def audio_in(f):
     @functools.wraps(f)
     def dec(args, stdin=None, stdout=None, stderr=None, spec=None, stack=None):
         audio = _stash_get_audio(stdin, spec)
-        return f(audio, args, stdin=stdin, stdout=stdin, stderr=stderr, spec=spec)
+        return f(audio, args, stdin=stdin, stdout=stdout, stderr=stderr, spec=spec)
     return dec
 
 
@@ -45,7 +46,8 @@ def _stash_set_audio(audio, stdout, spec):
         return 0 if isinstance(audio, Audio) else audio
     aid = id(audio)
     AUDIO_PIPELINE_STASH[aid] = audio
-    print('\n{"UMDONE_AUDIO_PIPELINE_STASH_ID":' + str(aid) + '}', file=stdout)
+    print('\n{"UMDONE_AUDIO_PIPELINE_STASH_ID":' + str(aid) + '}', file=stdout,
+          flush=True)
     return 0
 
 
@@ -55,7 +57,7 @@ def audio_out(f):
     """
     @functools.wraps(f)
     def dec(args, stdin=None, stdout=None, stderr=None, spec=None, stack=None):
-        audio = f(args, stdin=stdin, stdout=stdin, stderr=stderr, spec=spec)
+        audio = f(args, stdin=stdin, stdout=stdout, stderr=stderr, spec=spec)
         return _stash_set_audio(audio, stdout, spec)
     return dec
 
@@ -67,7 +69,7 @@ def audio_io(f):
     @functools.wraps(f)
     def dec(args, stdin=None, stdout=None, stderr=None, spec=None, stack=None):
         ain = _stash_get_audio(stdin, spec)
-        aout = f(ain, args, stdin=stdin, stdout=stdin, stderr=stderr, spec=spec)
+        aout = f(ain, args, stdin=stdin, stdout=stdout, stderr=stderr, spec=spec)
         return _stash_set_audio(aout, stdout, spec)
     return dec
 

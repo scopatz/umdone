@@ -1,4 +1,5 @@
 """Load pipeline command"""
+import sys
 from argparse import ArgumentParser
 
 from lazyasd import lazyobject
@@ -29,7 +30,7 @@ def main(audio_in, args, stdin=None, stdout=None, stderr=None, spec=None):
     ns = PARSER.parse_args(args)
     if audio_in is None and ns.path is not None:
         audio_in = Audio(ns.path)
-    print_color('{YELLOW}reducing noise{NO_COLOR}', file=stderr)
+    print_color('{YELLOW}reducing noise{NO_COLOR}', file=sys.stderr, flush=True)
     from umdone.noise_reduction import reduce_noise
     audio_out = reduce_noise(audio_in, norm=ns.norm)
     return audio_out

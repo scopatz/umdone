@@ -21,5 +21,5 @@ def main(args, stdin=None, stdout=None, stderr=None, spec=None):
     """Loads an audio file"""
     ns = PARSER.parse_args(args)
     print_color('Loading {GREEN}' + ns.path + '{NO_COLOR}',
-                file=stderr)
+                file=stderr, flush=True)
     return Audio(ns.path)

@@ -6,7 +6,11 @@ import sys
 import tempfile
 import subprocess
 from threading import Thread
-from collections.abc import Iterable
+from collections.abc import Iterable, MutableMapping
+
+import numpy as np
+
+import joblib
 
 import librosa
 import librosa.core
@@ -93,7 +97,6 @@ def load(path):
     """
     if path.startswith('http'):
         path = download(path)
-    print_color('Loading {GREEN}' + path + '{NO_COLOR}', file=sys.stderr)
     data, sr = librosa.core.load(path)
     return data, sr
 
@@ -102,16 +105,55 @@ class Audio:
     """A container for audio"""
 
     def __init__(self, data=None, sr=None):
-        self.sr = sr
+        self._sr = sr
+        self._data = None
+        self._hash = None
         if data is None:
-            self.data = None
+            pass
         elif isinstance(data, str):
-            self.load(data)
+            if data.startswith('hash:'):
+                cached = AUDIO_CACHE[data[5:]]
+                self._data, self._sr = cached.data, cached.sr
+            else:
+                self.load(data)
         elif isinstance(data, Iterable):
-            self.data = data
+            self._data = data
         else:
             raise ValueError('audio data must be None, str, or iterable; got '
                              + str(type(data)))
+
+    @property
+    def data(self):
+        return self._data
+
+    @data.setter
+    def data(self, value):
+        if self._data is None or self._sr is None:
+            self._data = value
+        else:
+            raise RuntimeError('cannot set audio data once it has been set.')
+
+    @property
+    def sr(self):
+        return self._sr
+
+    @sr.setter
+    def sr(self, value):
+        if self._data is None or self._sr is None:
+            self._sr = value
+        else:
+            raise RuntimeError('cannot set audio sample rate once it has been set.')
+
+    @classmethod
+    def from_hash(cls, h):
+        return AUDIO_CACHE[h]
+
+    def __repr__(self):
+        if isinstance(self.data, np.ndarray) and isinstance(self.sr, int):
+            self.ensure_in_cache()
+            return "Audio.from_hash(" + repr(self.hash()) + ")"
+        else:
+            return f"Audio(data={self.data!r}, sr={self.sr!r})"
 
     def load(self, filename):
         """Loads audio from a file or URL."""
@@ -119,6 +161,59 @@ class Audio:
 
     def save(self, filename):
         librosa.output.write_wav(filename, self.data, self.sr, norm=True)
+
+    def hash(self):
+        if self._hash is None:
+            self._hash = joblib.hash((self.data, self.sr),
+                                     hash_name='md5')
+        return self._hash
+
+    def hash_str(self):
+        """Returns the hash string"""
+        return 'hash:' + self.hash()
+
+    def ensure_in_cache(self):
+        """Makes sure this audio is in the cache"""
+        AUDIO_CACHE[self.hash()] = self
+
+
+
+class AudioCache(MutableMapping):
+
+    def __init__(self, location):
+        self.cachedir = os.path.join(location, 'audio-cache')
+        os.makedirs(self.cachedir, exist_ok=True)
+        self.d = {}
+
+    def __getitem__(self, key):
+        if key in self.d:
+            return self.d[key]
+        filename = os.path.join(self.cachedir, key + '.bz2')
+        if os.path.isfile(filename):
+            value = joblib.load(filename)
+            self.d[key] = value
+            return value
+        raise KeyError(f"Could not find {key} in-memory or on disk")
+
+    def __setitem__(self, key, value):
+        self.d[key] = value
+        key_str = key.decode() if isinstance(key, bytes) else key
+        filename = os.path.join(self.cachedir, key + '.bz2')
+        if os.path.isfile(filename):
+            return
+        joblib.dump(value, filename, compress=1)
+
+    def __delitem__(self, key):
+        del self.d[key]
+
+    def __len__(self):
+        return len(self.d)
+
+    def __iter__(self):
+        yield from self.d
+
+
+AUDIO_CACHE = AudioCache(location=$UMDONE_CACHE_DIR)
 
 
 if __name__ == '__main__':

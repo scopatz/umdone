@@ -39,6 +39,30 @@ def intervals_to_mask(intervals, size):
 
 
 @cache
+def _reduce_noise(noisy, sr=None, norm=True):
+    print("n1", noisy)
+    if isinstance(noisy, str):
+        noisy = Audio(noisy)
+    else:
+        noisy = Audio(noisy, sr=sr)
+    print("n2", noisy)
+    print(noisy.data, noisy.sr)
+    non_silent_intervals = librosa.effects.split(noisy.data)
+    silent_intervals = complement_intervals(non_silent_intervals,
+                                            size=len(noisy.data))
+    mask = intervals_to_mask(silent_intervals, len(noisy.data))
+    D_silent = librosa.stft(noisy.data[mask])
+    D_noisy = librosa.stft(noisy.data)
+    D_nr = -np.max(D_silent, axis=1)[:,np.newaxis] + D_noisy
+    nr = librosa.core.istft(D_nr)
+    if norm and np.issubdtype(nr.dtype, np.floating):
+        nr = librosa.util.normalize(nr, norm=np.inf, axis=None)
+    nr = Audio(nr, sr)
+    nr.ensure_in_cache()
+    return noisy.hash_str()
+    #return nr, sr
+
+
 def reduce_noise(noisy, outfile=None, norm=True):
     """Reduces noise in audio
 
@@ -54,19 +78,12 @@ def reduce_noise(noisy, outfile=None, norm=True):
     -------
     reduced : audio
     """
-    if isinstance(noisy, str):
-        noisy = Audio(noisy)
-    non_silent_intervals = librosa.effects.split(noisy.data)
-    silent_intervals = complement_intervals(non_silent_intervals,
-                                            size=len(noisy.data))
-    mask = intervals_to_mask(silent_intervals, len(noisy.data))
-    D_silent = librosa.stft(noisy.data[mask])
-    D_noisy = librosa.stft(noisy.data)
-    D_nr = -np.max(D_silent, axis=1)[:,np.newaxis] + D_noisy
-    nr = librosa.core.istft(D_nr)
-    if norm and np.issubdtype(nr.dtype, np.floating):
-        nr = librosa.util.normalize(nr, norm=np.inf, axis=None)
-    nr = Audio(nr, noisy.sr)
+    if isinstance(noisy, Audio):
+        noisy.ensure_in_cache()
+        noisy = noisy.hash_str()
+    return Audio(_reduce_noise(noisy, norm=norm))
+    nr, sr = _reduce_noise(noisy, norm=norm)
+    nr = Audio(nr, sr)
     if outfile is not None:
         nr.save(outfile)
     return nr
