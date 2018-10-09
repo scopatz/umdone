@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # coding=utf-8
 """The umdone installer."""
-from __future__ import print_function, unicode_literals
 import os
 import sys
 try:
@@ -12,7 +11,7 @@ except ImportError:
     from distutils.core import setup
     HAVE_SETUPTOOLS = False
 
-from umdone import __version__ as UMDONE_VERSION
+VERSION = "0.1.dev0"
 
 
 def main():
@@ -23,7 +22,7 @@ def main():
         description='removes umms from audio files',
         long_description=readme,
         license='BSD',
-        version=UMDONE_VERSION,
+        version=VERSION,
         author='Anthony Scopatz',
         maintainer='Anthony Scopatz',
         author_email='scopatz@gmail.com',
@@ -31,12 +30,14 @@ def main():
         platforms='Cross Platform',
         classifiers=['Programming Language :: Python :: 3'],
         packages=['umdone'],
+        package_dir={'umdone': 'umdone'},
+        package_data={'umdone': ['*.xsh']},
         scripts=['scripts/umdone'],
         zip_safe=False,
         )
     if HAVE_SETUPTOOLS:
         skw['setup_requires'] = []
-        skw['install_requires'] = ['numpy', 'librosa']
+        skw['install_requires'] = ['numpy', 'librosa', 'xonsh']
     setup(**skw)
 
 

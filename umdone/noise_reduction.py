@@ -3,6 +3,7 @@ import argparse
 import numpy as np
 
 import librosa.core
+import librosa.util
 import librosa.effects
 
 from umdone import cli
@@ -36,7 +37,7 @@ def intervals_to_mask(intervals, size):
     return mask
 
 
-def reduce_noise(noisy, outfile=None):
+def reduce_noise(noisy, outfile=None, norm=True):
     """Reduces noise in audio
 
     Parameters
@@ -61,6 +62,8 @@ def reduce_noise(noisy, outfile=None):
     D_noisy = librosa.stft(noisy.data)
     D_nr = -np.max(D_silent, axis=1)[:,np.newaxis] + D_noisy
     nr = librosa.core.istft(D_nr)
+    if norm and np.issubdtype(nr.dtype, np.floating):
+        nr = librosa.util.normalize(nr, norm=np.inf, axis=None)
     nr = Audio(nr, noisy.sr)
     if outfile is not None:
         nr.save(outfile)

@@ -1,6 +1,7 @@
 """Plays and manipulates sound files."""
 from __future__ import unicode_literals
 import io
+import os
 import tempfile
 import subprocess
 from threading import Thread
@@ -10,6 +11,8 @@ import librosa
 import librosa.core
 import librosa.output
 from scipy.io import wavfile
+
+from umdone.tools import cache
 
 
 def array_to_bytes(x, sr):
@@ -50,6 +53,40 @@ def play_posix(x, sr):
 def play(x, sr):
     """Play's a numpy array that represents a wav file with a given sample rate."""
     play_posix(x, sr)
+
+
+@cache
+def download(url):
+    """Downloads a URL to a local path. This function is cached
+    in order to prevent redownloading the same file. Returns the
+    local path downloaded to.
+    """
+    import requests
+
+
+
+@cache
+def load(path):
+    """Loads a file from a local file or url.
+This function is cached
+    in order to prevent redownloading the same file, or
+re-decoding
+    files in certain formats, such as MP3.
+
+    Parameters
+    ----------
+    path : str
+        Filename or URL
+
+    Returns
+    -------
+    data : ndarray
+        Numpy array of WAV data.
+    sr : int
+        Sampling rate to go with data
+    """
+
+
 
 
 class Audio:
