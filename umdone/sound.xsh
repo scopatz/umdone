@@ -146,7 +146,19 @@ class Audio:
 
     @classmethod
     def from_hash(cls, h):
+        if h.startswith('hash:'):
+            h = h[5:]
         return AUDIO_CACHE[h]
+
+    @classmethod
+    def from_hash_or_init(cls, data=None, sr=None):
+        if isinstance(data, str):
+            if data.startswith('hash:') or data in AUDIO_CACHE:
+                return cls.from_hash(data)
+            else:
+                return cls(data=data, sr=sr)
+        else:
+            return cls(data=data, sr=sr)
 
     def __repr__(self):
         if isinstance(self.data, np.ndarray) and isinstance(self.sr, int):
@@ -170,12 +182,13 @@ class Audio:
 
     def hash_str(self):
         """Returns the hash string"""
+        self.ensure_in_cache()
         return 'hash:' + self.hash()
 
     def ensure_in_cache(self):
         """Makes sure this audio is in the cache"""
-        AUDIO_CACHE[self.hash()] = self
-
+        if self.hash() not in AUDIO_CACHE:
+            AUDIO_CACHE[self.hash()] = self
 
 
 class AudioCache(MutableMapping):
@@ -185,20 +198,23 @@ class AudioCache(MutableMapping):
         os.makedirs(self.cachedir, exist_ok=True)
         self.d = {}
 
+    def _filename(self, key):
+        return os.path.join(self.cachedir, key + '.bz2')
+
     def __getitem__(self, key):
         if key in self.d:
             return self.d[key]
-        filename = os.path.join(self.cachedir, key + '.bz2')
+        filename = self._filename(key)
         if os.path.isfile(filename):
             value = joblib.load(filename)
+            value._hash = key
             self.d[key] = value
             return value
         raise KeyError(f"Could not find {key} in-memory or on disk")
 
     def __setitem__(self, key, value):
         self.d[key] = value
-        key_str = key.decode() if isinstance(key, bytes) else key
-        filename = os.path.join(self.cachedir, key + '.bz2')
+        filename = self._filename(key)
         if os.path.isfile(filename):
             return
         joblib.dump(value, filename, compress=1)
@@ -211,6 +227,9 @@ class AudioCache(MutableMapping):
 
     def __iter__(self):
         yield from self.d
+
+    def __contains__(self, key):
+        return key in self.d or os.path.isfile(self._filename(key))
 
 
 AUDIO_CACHE = AudioCache(location=$UMDONE_CACHE_DIR)

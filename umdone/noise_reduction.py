@@ -40,13 +40,7 @@ def intervals_to_mask(intervals, size):
 
 @cache
 def _reduce_noise(noisy, sr=None, norm=True):
-    print("n1", noisy)
-    if isinstance(noisy, str):
-        noisy = Audio(noisy)
-    else:
-        noisy = Audio(noisy, sr=sr)
-    print("n2", noisy)
-    print(noisy.data, noisy.sr)
+    noisy = Audio.from_hash_or_init(noisy, sr=sr)
     non_silent_intervals = librosa.effects.split(noisy.data)
     silent_intervals = complement_intervals(non_silent_intervals,
                                             size=len(noisy.data))
@@ -58,9 +52,7 @@ def _reduce_noise(noisy, sr=None, norm=True):
     if norm and np.issubdtype(nr.dtype, np.floating):
         nr = librosa.util.normalize(nr, norm=np.inf, axis=None)
     nr = Audio(nr, sr)
-    nr.ensure_in_cache()
     return noisy.hash_str()
-    #return nr, sr
 
 
 def reduce_noise(noisy, outfile=None, norm=True):
@@ -79,11 +71,8 @@ def reduce_noise(noisy, outfile=None, norm=True):
     reduced : audio
     """
     if isinstance(noisy, Audio):
-        noisy.ensure_in_cache()
         noisy = noisy.hash_str()
-    return Audio(_reduce_noise(noisy, norm=norm))
-    nr, sr = _reduce_noise(noisy, norm=norm)
-    nr = Audio(nr, sr)
+    nr = Audio.from_hash(_reduce_noise(noisy, norm=norm))
     if outfile is not None:
         nr.save(outfile)
     return nr
