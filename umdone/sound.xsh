@@ -69,12 +69,13 @@ def download(url):
     local path downloaded to.
     """
     import requests
-    outfile = os.path.join($UMDONE_CAHE_DIR, os.path.basename(url))
+    outfile = os.path.join($UMDONE_CACHE_DIR, os.path.basename(url))
     print_color('Downloading {YELLOW}' + url + '{NO_COLOR} to {GREEN}' + outfile
                 + '{NO_COLOR}...', file=sys.stderr)
     r = requests.get(url)
     with open(outfile, 'wb') as f:
         f.write(r.content)
+    print_color('...done! 🎉', file=sys.stderr)
     return outfile
 
 
