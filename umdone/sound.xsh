@@ -98,6 +98,7 @@ def load(path):
     """
     if path.startswith('http'):
         path = download(path)
+    print_color('  - loading with librosa', file=sys.stderr)
     data, sr = librosa.core.load(path)
     return data, sr
 
@@ -216,9 +217,23 @@ class AudioCache(MutableMapping):
     def __setitem__(self, key, value):
         self.d[key] = value
         filename = self._filename(key)
-        if os.path.isfile(filename):
+        if os.path.isfile(filename) and os.stat(filename).st_size > 0:
             return
-        joblib.dump(value, filename, compress=1)
+        print(f'dumping {value} to {filename}', file=sys.stderr)
+        if os.path.exists(filename):
+            print('  - removing existing file', file=sys.stderr)
+            os.remove(filename)
+        for i in range(1, 4):
+            try:
+                print(f'  - trying to dump ({i}/3)', file=sys.stderr)
+                joblib.dump(value, filename, compress=1)
+                print(f'  - success!', file=sys.stderr)
+                break
+            except Exception:
+                pass
+        else:
+            raise RuntimeError(f'could not dump {value} to {filename}')
+        print(f'dumping done', file=sys.stderr)
 
     def __delitem__(self, key):
         del self.d[key]

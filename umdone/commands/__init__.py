@@ -1,6 +1,7 @@
 """Commands subpackage for umdone"""
 from ast import literal_eval
 import os
+import sys
 import glob
 import builtins
 import functools
@@ -23,7 +24,8 @@ def _stash_get_audio(stdin, spec):
             break
     else:
         audio = None
-        print('no audio in pipeline')
+        print('no audio in pipeline', file=sys.stderr)
+        print("stash:", AUDIO_PIPELINE_STASH, file=sys.stderr)
     if spec.last_in_pipeline:
         AUDIO_PIPELINE_STASH.clear()
     return audio
@@ -46,7 +48,7 @@ def _stash_set_audio(audio, stdout, spec):
         return 0 if isinstance(audio, Audio) else audio
     aid = id(audio)
     AUDIO_PIPELINE_STASH[aid] = audio
-    print('\n{"UMDONE_AUDIO_PIPELINE_STASH_ID":' + str(aid) + '}', file=stdout,
+    print('\n{"UMDONE_AUDIO_PIPELINE_STASH_ID":' + str(aid) + '}', file=sys.stdout,
           flush=True)
     return 0
 

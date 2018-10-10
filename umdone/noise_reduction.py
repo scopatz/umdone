@@ -41,6 +41,8 @@ def intervals_to_mask(intervals, size):
 @cache
 def _reduce_noise(noisy, sr=None, norm=True):
     noisy = Audio.from_hash_or_init(noisy, sr=sr)
+    import sys
+    print(noisy.data, file=sys.stderr)
     non_silent_intervals = librosa.effects.split(noisy.data)
     silent_intervals = complement_intervals(non_silent_intervals,
                                             size=len(noisy.data))
