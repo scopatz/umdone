@@ -17,7 +17,7 @@ from umdone.sound import Audio
 AUDIO_PIPELINE_STASH = {}
 
 
-def _stash_get_audio(stdin, spec):
+def _stash_get_audio(stdin, stderr, spec):
     if stdin is None:
         return None
     #for line in stdin.readlines():
@@ -26,7 +26,8 @@ def _stash_get_audio(stdin, spec):
         #if not line.strip():
         #    time.sleep(1e-3)
         #    continue
-        print('line: ', line, stdin, file=sys.stderr)
+        #print('line: ', line, stdin, file=stderr)
+        stderr.write('line: ' + repr(line) + ' ' + repr(stdin) + '\n')
 
         if line.startswith('{"UMDONE_AUDIO_PIPELINE_STASH_ID":'):
             aid = literal_eval(line)["UMDONE_AUDIO_PIPELINE_STASH_ID"]
@@ -47,7 +48,7 @@ def audio_in(f):
     """
     @functools.wraps(f)
     def dec(args, stdin=None, stdout=None, stderr=None, spec=None, stack=None):
-        audio = _stash_get_audio(stdin, spec)
+        audio = _stash_get_audio(stdin, stderr, spec)
         return f(audio, args, stdin=stdin, stdout=stdout, stderr=stderr, spec=spec)
     return dec
 
@@ -82,7 +83,7 @@ def audio_io(f):
     """
     @functools.wraps(f)
     def dec(args, stdin=None, stdout=None, stderr=None, spec=None, stack=None):
-        ain = _stash_get_audio(stdin, spec)
+        ain = _stash_get_audio(stdin, stderr, spec)
         aout = f(ain, args, stdin=stdin, stdout=stdout, stderr=stderr, spec=spec)
         rtn = _stash_set_audio(aout, stdout, spec)
         return rtn
