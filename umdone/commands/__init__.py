@@ -3,10 +3,13 @@ from ast import literal_eval
 import os
 import sys
 import glob
+import time
 import builtins
 import functools
 import importlib
 from contextlib import contextmanager
+
+from xonsh.proc import QueueReader, NonBlockingFDReader
 
 from umdone.sound import Audio
 
@@ -17,7 +20,14 @@ AUDIO_PIPELINE_STASH = {}
 def _stash_get_audio(stdin, spec):
     if stdin is None:
         return None
+    #for line in stdin.readlines():
     for line in stdin:
+        #line = stdin.readline().decode()
+        #if not line.strip():
+        #    time.sleep(1e-3)
+        #    continue
+        print('line: ', line, stdin, file=sys.stderr)
+
         if line.startswith('{"UMDONE_AUDIO_PIPELINE_STASH_ID":'):
             aid = literal_eval(line)["UMDONE_AUDIO_PIPELINE_STASH_ID"]
             audio = AUDIO_PIPELINE_STASH[aid]
@@ -44,11 +54,12 @@ def audio_in(f):
 
 def _stash_set_audio(audio, stdout, spec):
     if not isinstance(audio, Audio) or spec.last_in_pipeline:
-        AUDIO_PIPELINE_STASH.clear()
+        #AUDIO_PIPELINE_STASH.clear()
         return 0 if isinstance(audio, Audio) else audio
-    aid = id(audio)
+    aid = audio.hash_str()
     AUDIO_PIPELINE_STASH[aid] = audio
-    print('\n{"UMDONE_AUDIO_PIPELINE_STASH_ID":' + str(aid) + '}', file=sys.stdout,
+    print(spec, stdout, file=sys.stderr)
+    print('\n{"UMDONE_AUDIO_PIPELINE_STASH_ID":' + repr(aid) + '}', file=stdout,
           flush=True)
     return 0
 
@@ -60,7 +71,8 @@ def audio_out(f):
     @functools.wraps(f)
     def dec(args, stdin=None, stdout=None, stderr=None, spec=None, stack=None):
         audio = f(args, stdin=stdin, stdout=stdout, stderr=stderr, spec=spec)
-        return _stash_set_audio(audio, stdout, spec)
+        rtn = _stash_set_audio(audio, stdout, spec)
+        return rtn
     return dec
 
 
@@ -72,7 +84,9 @@ def audio_io(f):
     def dec(args, stdin=None, stdout=None, stderr=None, spec=None, stack=None):
         ain = _stash_get_audio(stdin, spec)
         aout = f(ain, args, stdin=stdin, stdout=stdout, stderr=stderr, spec=spec)
-        return _stash_set_audio(aout, stdout, spec)
+        rtn = _stash_set_audio(aout, stdout, spec)
+        return rtn
+        #return _stash_set_audio(aout, stdout, spec)
     return dec
 
 

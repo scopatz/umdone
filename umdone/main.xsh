@@ -3,6 +3,7 @@ import os
 import builtins
 from argparse import ArgumentParser
 
+from xonsh.tools import swap_values
 from xonsh.codecache import run_script_with_cache, run_code_with_cache
 
 import umdone
@@ -10,22 +11,28 @@ from umdone.commands import swap_aliases
 
 
 def run(file=None, command=None):
-    shell = builtins.__xonsh__.shell
+    execer = builtins.__xonsh__.execer
     if file is not None:
         # run a script contained in a file
         path = os.path.abspath(os.path.expanduser(file))
+        mode = 'exec'
         if os.path.isfile(path):
-            $XONSH_SOURCE = path
-            shell.ctx.update({"__file__": file, "__name__": "__main__"})
-            run_script_with_cache(
-                file, shell.execer, glb=shell.ctx, loc=None, mode="exec"
-            )
+            with open(path, 'r') as f:
+                src = f.read()
+            if not src.endswith('\n'):
+                src += '\n'
         else:
             print("umdone: {0}: No such file or directory.".format(file))
+            return
     elif command is not None:
-        run_code_with_cache(command.lstrip(), shell.execer, mode="single")
+        path = '<script>'
+        mode = 'single'
+        src = command
     else:
         raise RuntimeError('Either a script file or a command (-c) must be given')
+    updates = {"__file__": path, "__name__": "__main__"}
+    with ${...}.swap(XONSH_SOURCE=path), swap_values(builtins.__xonsh__.ctx, updates):
+        execer.exec(src, mode=mode, glbs=builtins.__xonsh__.ctx, filename=path)
 
 
 def main(args=None):
