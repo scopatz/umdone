@@ -7,6 +7,7 @@ import time
 import builtins
 import functools
 import importlib
+from threading import RLock
 from contextlib import contextmanager
 
 from xonsh.proc import QueueReader, NonBlockingFDReader
@@ -15,33 +16,29 @@ from umdone.sound import Audio
 
 
 AUDIO_PIPELINE_STASH = {}
+LOCK = RLock()
 
 
 def _stash_get_audio(stdin, stderr, spec):
     if stdin is None:
         return None
-    #for line in stdin.readlines():
-    audio_ids = []
-    for line in stdin:
-        #line = stdin.readline().decode()
-        #if not line.strip():
-        #    time.sleep(1e-3)
-        #    continue
-        #print('line: ', line, stdin, file=stderr)
+    #for line in stdin:
+    stdin = NonBlockingFDReader(stdin.fileno())
+    while not stdin.closed:
+        line = stdin.readline().decode().strip()
         stderr.write('line: ' + repr(line) + ' ' + repr(stdin) + '\n')
-
+        if not line:
+            time.sleep(1e-3)
+            continue
         if line.startswith('{"UMDONE_AUDIO_PIPELINE_STASH_ID":'):
             aid = literal_eval(line)["UMDONE_AUDIO_PIPELINE_STASH_ID"]
-            #audio_ids.append(aid)
             audio = AUDIO_PIPELINE_STASH[aid]
             break
-    #if len(audio_ids) > 0:
-    #    aid = audio_ids[-1]
-    #    audio = AUDIO_PIPELINE_STASH[aid]
     else:
         audio = None
-        print('no audio in pipeline', file=sys.stderr)
-        print("stash:", AUDIO_PIPELINE_STASH, file=sys.stderr)
+        print('no audio in pipeline', file=stderr)
+        print('stdin closed:', stdin.closed, file=stderr)
+        print("stash:", AUDIO_PIPELINE_STASH, file=stderr)
     if spec.last_in_pipeline:
         AUDIO_PIPELINE_STASH.clear()
     return audio
@@ -53,20 +50,23 @@ def audio_in(f):
     """
     @functools.wraps(f)
     def dec(args, stdin=None, stdout=None, stderr=None, spec=None, stack=None):
+      #with LOCK:
         audio = _stash_get_audio(stdin, stderr, spec)
         return f(audio, args, stdin=stdin, stdout=stdout, stderr=stderr, spec=spec)
     return dec
 
 
-def _stash_set_audio(audio, stdout, spec):
+def _stash_set_audio(audio, stdout, stderr, spec):
     if not isinstance(audio, Audio) or spec.last_in_pipeline:
+        print('failed to set stash: ', audio, file=stderr)
         AUDIO_PIPELINE_STASH.clear()
         return 0 if isinstance(audio, Audio) else audio
     aid = audio.hash_str()
     AUDIO_PIPELINE_STASH[aid] = audio
-    print(spec, stdout, file=sys.stderr)
-    print('\n{"UMDONE_AUDIO_PIPELINE_STASH_ID":' + repr(aid) + '}', file=stdout,
-          flush=True)
+    time.sleep(5e-3)
+    line = '\n{"UMDONE_AUDIO_PIPELINE_STASH_ID":' + repr(aid) + '}'
+    print(line, file=stdout, flush=True)
+    print(line, file=stderr, flush=True)
     return 0
 
 
@@ -76,8 +76,9 @@ def audio_out(f):
     """
     @functools.wraps(f)
     def dec(args, stdin=None, stdout=None, stderr=None, spec=None, stack=None):
+      #with LOCK:
         audio = f(args, stdin=stdin, stdout=stdout, stderr=stderr, spec=spec)
-        rtn = _stash_set_audio(audio, stdout, spec)
+        rtn = _stash_set_audio(audio, stdout, stderr, spec)
         return rtn
     return dec
 
@@ -88,11 +89,11 @@ def audio_io(f):
     """
     @functools.wraps(f)
     def dec(args, stdin=None, stdout=None, stderr=None, spec=None, stack=None):
+      #with LOCK:
         ain = _stash_get_audio(stdin, stderr, spec)
         aout = f(ain, args, stdin=stdin, stdout=stdout, stderr=stderr, spec=spec)
-        rtn = _stash_set_audio(aout, stdout, spec)
+        rtn = _stash_set_audio(aout, stdout, stderr, spec)
         return rtn
-        #return _stash_set_audio(aout, stdout, spec)
     return dec
 
 

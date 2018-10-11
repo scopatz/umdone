@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 import io
 import os
 import sys
+import ast
 import tempfile
 import subprocess
 from threading import Thread
@@ -18,6 +19,7 @@ import librosa.output
 from scipy.io import wavfile
 
 from xonsh.tools import print_color
+from xonsh.proc import QueueReader, NonBlockingFDReader
 
 from umdone.tools import cache
 
@@ -148,9 +150,13 @@ class Audio:
 
     @classmethod
     def from_hash(cls, h):
+        print('      - loading from hash:', h, file=sys.stderr)
         if h.startswith('hash:'):
             h = h[5:]
-        return AUDIO_CACHE[h]
+            print('     - adjusted from hash:', h, file=sys.stderr)
+        rtn = AUDIO_CACHE[h]
+        print('     - loaded from hash:', rtn, file=sys.stderr)
+        return rtn
 
     @classmethod
     def from_hash_or_init(cls, data=None, sr=None):
@@ -192,6 +198,57 @@ class Audio:
         if self.hash() not in AUDIO_CACHE:
             AUDIO_CACHE[self.hash()] = self
 
+    def _npy_filename(self):
+        return os.path.join(AUDIO_CACHE.cachedir, self.hash() + '.npy')
+
+    def _meta_filename(self):
+        return os.path.join(AUDIO_CACHE.cachedir, self.hash() + '.meta')
+
+    def save_to_cache(self):
+        """Saves audio to cache on disk."""
+        # write raw numpy array
+        npy = self._npy_filename()
+        with open(npy, 'wb') as f:
+            f.write(self.data.tobytes())
+        # write metadata
+        meta = self._meta_filename()
+        md = {'nbytes': self.data.nbytes,
+              'dtype': self.data.dtype.name,
+              'sr': self.sr}
+        with open(meta, 'w') as f:
+            f.write(str(md))
+
+    @classmethod
+    def load_from_cache(cls, h):
+        """Loads from audio cache on disk"""
+        print('Loading audio from cache:', h, file=sys.stderr)
+        a = cls()
+        a._hash = h
+        # reading normally was deadlocking for some reason
+        # meta data shouldn't be more than 1000 bytes
+        print('  - loading metadata', file=sys.stderr)
+        fd = os.open(a._meta_filename(), os.O_NONBLOCK)
+        raw = os.pread(fd, 1000, 0)
+        os.close(fd)
+        raw = raw.decode()
+        meta = ast.literal_eval(raw)
+        print('  - metadata:', meta, file=sys.stderr)
+        a._sr = meta['sr']
+        print('  - loading array buffer', file=sys.stderr)
+        fd = os.open(a._npy_filename(), os.O_NONBLOCK)
+        buf = os.pread(fd, meta['nbytes'], 0)
+        print('  - buffer last:', len(buf), buf[-10:], file=sys.stderr)
+        while len(buf) < meta['nbytes']:
+            print('  - buffer last:', len(buf), buf[-10:], file=sys.stderr)
+            buf += os.pread(fd, meta['nbytes'], len(buf))
+        os.close(fd)
+        assert len(buf) == meta['nbytes'], 'buffer not of correct length'
+        #with open(a._npy_filename(), 'rb') as f:
+        #    buf = f.read(meta['nbytes'])
+        print('  - buffer loaded:', buf[:10], file=sys.stderr)
+        a._data = np.frombuffer(buf, dtype=meta['dtype'])
+        return a
+
 
 class AudioCache(MutableMapping):
 
@@ -200,23 +257,22 @@ class AudioCache(MutableMapping):
         os.makedirs(self.cachedir, exist_ok=True)
         self.d = {}
 
-    def _filename(self, key):
-        return os.path.join(self.cachedir, key + '.bz2')
+    def _npy_filename(self, key):
+        return os.path.join(self.cachedir, key + '.npy')
 
     def __getitem__(self, key):
         if key in self.d:
             return self.d[key]
-        filename = self._filename(key)
+        filename = self._npy_filename(key)
         if os.path.isfile(filename):
-            value = joblib.load(filename)
-            value._hash = key
+            value = Audio.load_from_cache(key)
             self.d[key] = value
             return value
         raise KeyError(f"Could not find {key} in-memory or on disk")
 
     def __setitem__(self, key, value):
         self.d[key] = value
-        filename = self._filename(key)
+        filename = value._npy_filename()
         if os.path.isfile(filename) and os.stat(filename).st_size > 0:
             return
         print(f'dumping {value} to {filename}', file=sys.stderr)
@@ -226,14 +282,13 @@ class AudioCache(MutableMapping):
         for i in range(1, 4):
             try:
                 print(f'  - trying to dump ({i}/3)', file=sys.stderr)
-                joblib.dump(value, filename, compress=1)
+                value.save_to_cache()
                 print(f'  - success!', file=sys.stderr)
                 break
             except Exception:
                 pass
         else:
             raise RuntimeError(f'could not dump {value} to {filename}')
-        print(f'dumping done', file=sys.stderr)
 
     def __delitem__(self, key):
         del self.d[key]
@@ -245,7 +300,7 @@ class AudioCache(MutableMapping):
         yield from self.d
 
     def __contains__(self, key):
-        return key in self.d or os.path.isfile(self._filename(key))
+        return key in self.d or os.path.isfile(self._npy_filename(key))
 
 
 AUDIO_CACHE = AudioCache(location=$UMDONE_CACHE_DIR)

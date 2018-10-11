@@ -23,4 +23,6 @@ def main(args, stdin=None, stdout=None, stderr=None, spec=None):
     ns = PARSER.parse_args(args)
     print_color('Loading {GREEN}' + ns.path + '{NO_COLOR}',
                 file=sys.stderr, flush=True)
-    return Audio(ns.path)
+    rtn = Audio(ns.path)
+    print('loaded', rtn, file=sys.stderr)
+    return rtn
