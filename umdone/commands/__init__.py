@@ -21,6 +21,7 @@ def _stash_get_audio(stdin, stderr, spec):
     if stdin is None:
         return None
     #for line in stdin.readlines():
+    audio_ids = []
     for line in stdin:
         #line = stdin.readline().decode()
         #if not line.strip():
@@ -31,8 +32,12 @@ def _stash_get_audio(stdin, stderr, spec):
 
         if line.startswith('{"UMDONE_AUDIO_PIPELINE_STASH_ID":'):
             aid = literal_eval(line)["UMDONE_AUDIO_PIPELINE_STASH_ID"]
+            #audio_ids.append(aid)
             audio = AUDIO_PIPELINE_STASH[aid]
             break
+    #if len(audio_ids) > 0:
+    #    aid = audio_ids[-1]
+    #    audio = AUDIO_PIPELINE_STASH[aid]
     else:
         audio = None
         print('no audio in pipeline', file=sys.stderr)
@@ -55,7 +60,7 @@ def audio_in(f):
 
 def _stash_set_audio(audio, stdout, spec):
     if not isinstance(audio, Audio) or spec.last_in_pipeline:
-        #AUDIO_PIPELINE_STASH.clear()
+        AUDIO_PIPELINE_STASH.clear()
         return 0 if isinstance(audio, Audio) else audio
     aid = audio.hash_str()
     AUDIO_PIPELINE_STASH[aid] = audio
