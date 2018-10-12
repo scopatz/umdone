@@ -154,12 +154,9 @@ class Audio:
 
     @classmethod
     def from_hash(cls, h):
-        print('      - loading from hash:', h, file=sys.stderr)
         if h.startswith('hash:'):
             h = h[5:]
-            print('     - adjusted from hash:', h, file=sys.stderr)
         rtn = AUDIO_CACHE[h]
-        print('     - loaded from hash:', rtn, file=sys.stderr)
         return rtn
 
     @classmethod
@@ -202,6 +199,9 @@ class Audio:
         if self.hash() not in AUDIO_CACHE:
             AUDIO_CACHE[self.hash()] = self
 
+    def _bz2_filename(self):
+        return os.path.join(AUDIO_CACHE.cachedir, self.hash() + '.bz2')
+
     def _npy_filename(self):
         return os.path.join(AUDIO_CACHE.cachedir, self.hash() + '.npy')
 
@@ -210,65 +210,14 @@ class Audio:
 
     def save_to_cache(self):
         """Saves audio to cache on disk."""
-        # write raw numpy array
-        npy = self._npy_filename()
-        with open(npy, 'wb') as f:
-            f.write(self.data.tobytes())
-        # write metadata
-        meta = self._meta_filename()
-        md = {'nbytes': self.data.nbytes,
-              'dtype': self.data.dtype.name,
-              'sr': self.sr}
-        with open(meta, 'w') as f:
-            f.write(str(md))
+        joblib.dump(self, self._bz2_filename(), compress=1)
+        return
 
     @classmethod
     def load_from_cache(cls, h):
         """Loads from audio cache on disk"""
-        print('Loading audio from cache:', h, file=sys.stderr)
-        a = cls()
-        a._hash = h
-        # reading normally was deadlocking for some reason
-        # meta data shouldn't be more than 1000 bytes
-        print('  - loading metadata', file=sys.stderr)
-        """
-        fd = os.open(a._meta_filename(), os.O_NONBLOCK)
-        #raw = os.pread(fd, 1000, 0)
-        raw = os.read(fd, 1000)
-        os.close(fd)
-        raw = raw.decode()
-        """
-        with open(a._meta_filename(), 'r') as f:
-            raw = f.read(1000)
-        meta = ast.literal_eval(raw)
-        print('  - metadata:', meta, file=sys.stderr)
-        a._sr = meta['sr']
-        """
-        print('  - opening array buffer', file=sys.stderr)
-        fd = os.open(a._npy_filename(),
-                     #os.O_RDONLY
-                     os.O_NONBLOCK
-                     )
-        """
-        print('  - loading array buffer', file=sys.stderr)
-        """
-        if fd in select([fd], (), (), 1e-3)[0]:
-            buf = os.pread(fd, meta['nbytes'], 0)
-        #buf = os.pread(fd, meta['nbytes'], 0)
-        print('  - buffer last:', len(buf), buf[-10:], file=sys.stderr)
-        while len(buf) < meta['nbytes']:
-            print('  - buffer last:', len(buf), buf[-10:], file=sys.stderr)
-            if fd in select([fd], (), (), 1e-3)[0]:
-                buf += os.pread(fd, meta['nbytes'], len(buf))
-            else:
-                time.sleep(1e-3)
-        os.close(fd)
-        assert len(buf) == meta['nbytes'], 'buffer not of correct length'
-        """
-        with open(a._npy_filename(), 'rb') as f:
-            buf = f.read(meta['nbytes'])
-        print('  - buffer loaded:', buf[:10], file=sys.stderr)
-        a._data = np.frombuffer(buf, dtype=meta['dtype'])
+        print('  - loading audio from cache:', h, file=sys.stderr)
+        a = joblib.load(os.path.join(AUDIO_CACHE.cachedir, h + '.bz2'))
         return a
 
 
@@ -279,13 +228,16 @@ class AudioCache(MutableMapping):
         os.makedirs(self.cachedir, exist_ok=True)
         self.d = {}
 
+    def _bz2_filename(self, key):
+        return os.path.join(self.cachedir, key + '.bz2')
+
     def _npy_filename(self, key):
         return os.path.join(self.cachedir, key + '.npy')
 
     def __getitem__(self, key):
         if key in self.d:
             return self.d[key]
-        filename = self._npy_filename(key)
+        filename = self._bz2_filename(key)
         if os.path.isfile(filename):
             with LOCK:
                 value = Audio.load_from_cache(key)
@@ -295,7 +247,7 @@ class AudioCache(MutableMapping):
 
     def __setitem__(self, key, value):
         self.d[key] = value
-        filename = value._npy_filename()
+        filename = value._bz2_filename()
         if os.path.isfile(filename) and os.stat(filename).st_size > 0:
             return
         print(f'dumping {value} to {filename}', file=sys.stderr)

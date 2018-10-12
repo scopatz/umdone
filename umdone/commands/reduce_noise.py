@@ -30,10 +30,9 @@ def main(audio_in, args, stdin=None, stdout=None, stderr=None, spec=None):
     ns = PARSER.parse_args(args)
     if audio_in is None and ns.path is not None:
         audio_in = Audio(ns.path)
-    print_color('{YELLOW}reducing noise{NO_COLOR}', file=stderr, flush=True)
+    print_color('{YELLOW}Reducing noise{NO_COLOR}', file=stderr, flush=True)
     print('  - audio in:', audio_in, file=stderr, flush=True)
     import umdone.noise_reduction
-    print('  - imported module:', umdone.noise_reduction, file=stderr, flush=True)
     audio_out = umdone.noise_reduction.reduce_noise(audio_in, norm=ns.norm)
     print('  - audio out:', audio_out, file=stderr, flush=True)
     return audio_out

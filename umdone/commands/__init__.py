@@ -13,68 +13,10 @@ from contextlib import contextmanager
 
 from xonsh.proc import QueueReader, NonBlockingFDReader
 
-from umdone.sound import Audio, LOCK
+from umdone.sound import Audio
 
 
 NEXT_IN_PIPELINE = None
-GOTTEN = object()
-
-"""
-def _stash_get_audio(stdin, stderr, spec):
-    if stdin is None:
-        return None
-    #for line in stdin:
-    stdin = NonBlockingFDReader(stdin.fileno())
-    while not stdin.closed:
-        line = stdin.readline().decode().strip()
-        stderr.write('line: ' + repr(line) + ' ' + repr(stdin) + '\n')
-        if not line:
-            time.sleep(1e-3)
-            continue
-        if line.startswith('{"UMDONE_AUDIO_PIPELINE_STASH_ID":'):
-            aid = literal_eval(line)["UMDONE_AUDIO_PIPELINE_STASH_ID"]
-            audio = AUDIO_PIPELINE_STASH[aid]
-            break
-    else:
-        audio = None
-        print('no audio in pipeline', file=stderr)
-        print('stdin closed:', stdin.closed, file=stderr)
-        print("stash:", AUDIO_PIPELINE_STASH, file=stderr)
-    if spec.last_in_pipeline:
-        AUDIO_PIPELINE_STASH.clear()
-    return audio
-
-
-def _stash_get_audio(stdin, stderr, spec):
-    global NEXT_IN_PIPELINE
-    while NEXT_IN_PIPELINE is None:
-        time.sleep(1e-3)
-    aid = NEXT_IN_PIPELINE
-    audio = AUDIO_PIPELINE_STASH[aid]
-    NEXT_IN_PIPELINE = None
-    if spec.last_in_pipeline:
-        AUDIO_PIPELINE_STASH.clear()
-    return audio
-
-
-def _stash_get_audio(stdin, stderr, spec):
-    while len(AUDIO_PIPELINE_STASH) < spec.pipeline_index:
-        time.sleep(1e-3)
-    audio = AUDIO_PIPELINE_STASH[spec.pipeline_index]
-    if spec.last_in_pipeline:
-        AUDIO_PIPELINE_STASH.clear()
-    return audio
-
-def _stash_get_audio(stdin, stderr, spec):
-    while AUDIO_PIPELINE_STASH.qsize() < spec.pipeline_index:
-        time.sleep(1e-3)
-    audio = AUDIO_PIPELINE_STASH.get()
-    AUDIO_PIPELINE_STASH.put(GOTTEN)
-    if spec.last_in_pipeline:
-        while not AUDIO_PIPELINE_STASH.empty():
-            AUDIO_PIPELINE_STASH.get()
-    return audio
-"""
 
 
 def _stash_get_audio(stdin, stderr, spec):
@@ -89,42 +31,9 @@ def audio_in(f):
     """
     @functools.wraps(f)
     def dec(args, stdin=None, stdout=None, stderr=None, spec=None, stack=None):
-      #with LOCK:
         audio = _stash_get_audio(stdin, stderr, spec)
         return f(audio, args, stdin=stdin, stdout=stdout, stderr=stderr, spec=spec)
-    #dec.__xonsh_threadable__ = False
     return dec
-
-"""
-def _stash_set_audio(audio, stdout, stderr, spec):
-    if not isinstance(audio, Audio) or spec.last_in_pipeline:
-        print('failed to set stash: ', audio, file=stderr)
-        AUDIO_PIPELINE_STASH.clear()
-        return 0 if isinstance(audio, Audio) else audio
-    aid = audio.hash_str()
-    AUDIO_PIPELINE_STASH[aid] = audio
-    time.sleep(5e-3)
-    line = '\n{"UMDONE_AUDIO_PIPELINE_STASH_ID":' + repr(aid) + '}'
-    print(line, file=stdout, flush=True)
-    print(line, file=stderr, flush=True)
-    return 0
-
-
-def _stash_set_audio(audio, stdout, stderr, spec):
-    global NEXT_IN_PIPELINE
-    NEXT_IN_PIPELINE = aid = audio.hash_str()
-    AUDIO_PIPELINE_STASH[aid] = audio
-    return 0
-
-def _stash_set_audio(audio, stdout, stderr, spec):
-    AUDIO_PIPELINE_STASH[spec.pipeline_index+1] = audio
-    return 0
-
-
-def _stash_set_audio(audio, stdout, stderr, spec):
-    AUDIO_PIPELINE_STASH.put(audio)
-    return 0
-"""
 
 
 def _stash_set_audio(audio, stdout, stderr, spec):
@@ -139,11 +48,9 @@ def audio_out(f):
     """
     @functools.wraps(f)
     def dec(args, stdin=None, stdout=None, stderr=None, spec=None, stack=None):
-      #with LOCK:
         audio = f(args, stdin=stdin, stdout=stdout, stderr=stderr, spec=spec)
         rtn = _stash_set_audio(audio, stdout, stderr, spec)
         return rtn
-    #dec.__xonsh_threadable__ = False
     return dec
 
 
@@ -153,12 +60,10 @@ def audio_io(f):
     """
     @functools.wraps(f)
     def dec(args, stdin=None, stdout=None, stderr=None, spec=None, stack=None):
-      #with LOCK:
         ain = _stash_get_audio(stdin, stderr, spec)
         aout = f(ain, args, stdin=stdin, stdout=stdout, stderr=stderr, spec=spec)
         rtn = _stash_set_audio(aout, stdout, stderr, spec)
         return rtn
-    #dec.__xonsh_threadable__ = False
     return dec
 
 

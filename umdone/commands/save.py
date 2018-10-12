@@ -25,9 +25,10 @@ def PARSER():
 def main(ain, args, stdin=None, stdout=None, stderr=None, spec=None):
     """Saves an audio file"""
     ns = PARSER.parse_args(args)
-    print_color('Saving audio to {GREEN}' + ns.outfile + '{NO_COLOR}',
-                file=sys.stderr, flush=True)
+    print_color('{YELLOW}Saving audio to {GREEN}' + ns.outfile + '{NO_COLOR}',
+                file=stderr, flush=True)
     if ain is None and ns.infile is not None:
         ain = Audio(ns.infile)
+    print('  - saving audio', ain, file=stderr)
     ain.save(ns.outfile)
     return 0
