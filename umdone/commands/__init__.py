@@ -44,6 +44,27 @@ def _stash_get_audio(stdin, stderr, spec):
     return audio
 
 
+def _stash_get_audio(stdin, stderr, spec):
+    global NEXT_IN_PIPELINE
+    while NEXT_IN_PIPELINE is None:
+        time.sleep(1e-3)
+    aid = NEXT_IN_PIPELINE
+    audio = AUDIO_PIPELINE_STASH[aid]
+    NEXT_IN_PIPELINE = None
+    if spec.last_in_pipeline:
+        AUDIO_PIPELINE_STASH.clear()
+    return audio
+
+
+def _stash_get_audio(stdin, stderr, spec):
+    while len(AUDIO_PIPELINE_STASH) < spec.pipeline_index:
+        time.sleep(1e-3)
+    audio = AUDIO_PIPELINE_STASH[spec.pipeline_index]
+    if spec.last_in_pipeline:
+        AUDIO_PIPELINE_STASH.clear()
+    return audio
+
+
 def audio_in(f):
     """Decorated a main pipeline command function and declares that
     the command accepts audio input
@@ -53,6 +74,7 @@ def audio_in(f):
       #with LOCK:
         audio = _stash_get_audio(stdin, stderr, spec)
         return f(audio, args, stdin=stdin, stdout=stdout, stderr=stderr, spec=spec)
+    #dec.__xonsh_threadable__ = False
     return dec
 
 
@@ -70,6 +92,17 @@ def _stash_set_audio(audio, stdout, stderr, spec):
     return 0
 
 
+def _stash_set_audio(audio, stdout, stderr, spec):
+    global NEXT_IN_PIPELINE
+    NEXT_IN_PIPELINE = aid = audio.hash_str()
+    AUDIO_PIPELINE_STASH[aid] = audio
+    return 0
+
+def _stash_set_audio(audio, stdout, stderr, spec):
+    AUDIO_PIPELINE_STASH[spec.pipeline_index+1] = audio
+    return 0
+
+
 def audio_out(f):
     """Decorates a main pipeline command function and declares that
     the command returns an audio file.
@@ -80,6 +113,7 @@ def audio_out(f):
         audio = f(args, stdin=stdin, stdout=stdout, stderr=stderr, spec=spec)
         rtn = _stash_set_audio(audio, stdout, stderr, spec)
         return rtn
+    #dec.__xonsh_threadable__ = False
     return dec
 
 
@@ -94,6 +128,7 @@ def audio_io(f):
         aout = f(ain, args, stdin=stdin, stdout=stdout, stderr=stderr, spec=spec)
         rtn = _stash_set_audio(aout, stdout, stderr, spec)
         return rtn
+    #dec.__xonsh_threadable__ = False
     return dec
 
 
