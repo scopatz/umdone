@@ -8,6 +8,7 @@ import builtins
 import functools
 import importlib
 from threading import RLock
+from queue import LifoQueue
 from contextlib import contextmanager
 
 from xonsh.proc import QueueReader, NonBlockingFDReader
@@ -15,10 +16,11 @@ from xonsh.proc import QueueReader, NonBlockingFDReader
 from umdone.sound import Audio
 
 
-AUDIO_PIPELINE_STASH = {}
+AUDIO_PIPELINE_STASH = LifoQueue()
+GOTTEN = object()
 LOCK = RLock()
 
-
+"""
 def _stash_get_audio(stdin, stderr, spec):
     if stdin is None:
         return None
@@ -63,6 +65,17 @@ def _stash_get_audio(stdin, stderr, spec):
     if spec.last_in_pipeline:
         AUDIO_PIPELINE_STASH.clear()
     return audio
+"""
+
+def _stash_get_audio(stdin, stderr, spec):
+    while AUDIO_PIPELINE_STASH.qsize() < spec.pipeline_index:
+        time.sleep(1e-3)
+    audio = AUDIO_PIPELINE_STASH.get()
+    AUDIO_PIPELINE_STASH.put(GOTTEN)
+    if spec.last_in_pipeline:
+        while not AUDIO_PIPELINE_STASH.empty():
+            AUDIO_PIPELINE_STASH.get()
+    return audio
 
 
 def audio_in(f):
@@ -77,7 +90,7 @@ def audio_in(f):
     #dec.__xonsh_threadable__ = False
     return dec
 
-
+"""
 def _stash_set_audio(audio, stdout, stderr, spec):
     if not isinstance(audio, Audio) or spec.last_in_pipeline:
         print('failed to set stash: ', audio, file=stderr)
@@ -100,6 +113,12 @@ def _stash_set_audio(audio, stdout, stderr, spec):
 
 def _stash_set_audio(audio, stdout, stderr, spec):
     AUDIO_PIPELINE_STASH[spec.pipeline_index+1] = audio
+    return 0
+"""
+
+
+def _stash_set_audio(audio, stdout, stderr, spec):
+    AUDIO_PIPELINE_STASH.put(audio)
     return 0
 
 
