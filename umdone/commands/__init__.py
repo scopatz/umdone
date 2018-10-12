@@ -13,12 +13,12 @@ from contextlib import contextmanager
 
 from xonsh.proc import QueueReader, NonBlockingFDReader
 
-from umdone.sound import Audio
+from umdone.sound import Audio, LOCK
 
 
 AUDIO_PIPELINE_STASH = LifoQueue()
 GOTTEN = object()
-LOCK = RLock()
+#LOCK = RLock()
 
 """
 def _stash_get_audio(stdin, stderr, spec):
@@ -84,7 +84,7 @@ def audio_in(f):
     """
     @functools.wraps(f)
     def dec(args, stdin=None, stdout=None, stderr=None, spec=None, stack=None):
-      #with LOCK:
+      with LOCK:
         audio = _stash_get_audio(stdin, stderr, spec)
         return f(audio, args, stdin=stdin, stdout=stdout, stderr=stderr, spec=spec)
     #dec.__xonsh_threadable__ = False
@@ -128,7 +128,7 @@ def audio_out(f):
     """
     @functools.wraps(f)
     def dec(args, stdin=None, stdout=None, stderr=None, spec=None, stack=None):
-      #with LOCK:
+      with LOCK:
         audio = f(args, stdin=stdin, stdout=stdout, stderr=stderr, spec=spec)
         rtn = _stash_set_audio(audio, stdout, stderr, spec)
         return rtn
@@ -142,7 +142,7 @@ def audio_io(f):
     """
     @functools.wraps(f)
     def dec(args, stdin=None, stdout=None, stderr=None, spec=None, stack=None):
-      #with LOCK:
+      with LOCK:
         ain = _stash_get_audio(stdin, stderr, spec)
         aout = f(ain, args, stdin=stdin, stdout=stdout, stderr=stderr, spec=spec)
         rtn = _stash_set_audio(aout, stdout, stderr, spec)

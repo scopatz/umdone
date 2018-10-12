@@ -4,9 +4,11 @@ import io
 import os
 import sys
 import ast
+import time
 import tempfile
 import subprocess
-from threading import Thread
+from select import select
+from threading import Thread, RLock
 from collections.abc import Iterable, MutableMapping
 
 import numpy as np
@@ -22,6 +24,8 @@ from xonsh.tools import print_color
 from xonsh.proc import QueueReader, NonBlockingFDReader
 
 from umdone.tools import cache
+
+LOCK = RLock()
 
 
 def array_to_bytes(x, sr):
@@ -227,24 +231,42 @@ class Audio:
         # reading normally was deadlocking for some reason
         # meta data shouldn't be more than 1000 bytes
         print('  - loading metadata', file=sys.stderr)
+        """
         fd = os.open(a._meta_filename(), os.O_NONBLOCK)
-        raw = os.pread(fd, 1000, 0)
+        #raw = os.pread(fd, 1000, 0)
+        raw = os.read(fd, 1000)
         os.close(fd)
         raw = raw.decode()
+        """
+        with open(a._meta_filename(), 'r') as f:
+            raw = f.read(1000)
         meta = ast.literal_eval(raw)
         print('  - metadata:', meta, file=sys.stderr)
         a._sr = meta['sr']
+        """
+        print('  - opening array buffer', file=sys.stderr)
+        fd = os.open(a._npy_filename(),
+                     #os.O_RDONLY
+                     os.O_NONBLOCK
+                     )
+        """
         print('  - loading array buffer', file=sys.stderr)
-        fd = os.open(a._npy_filename(), os.O_NONBLOCK)
-        buf = os.pread(fd, meta['nbytes'], 0)
+        """
+        if fd in select([fd], (), (), 1e-3)[0]:
+            buf = os.pread(fd, meta['nbytes'], 0)
+        #buf = os.pread(fd, meta['nbytes'], 0)
         print('  - buffer last:', len(buf), buf[-10:], file=sys.stderr)
         while len(buf) < meta['nbytes']:
             print('  - buffer last:', len(buf), buf[-10:], file=sys.stderr)
-            buf += os.pread(fd, meta['nbytes'], len(buf))
+            if fd in select([fd], (), (), 1e-3)[0]:
+                buf += os.pread(fd, meta['nbytes'], len(buf))
+            else:
+                time.sleep(1e-3)
         os.close(fd)
         assert len(buf) == meta['nbytes'], 'buffer not of correct length'
-        #with open(a._npy_filename(), 'rb') as f:
-        #    buf = f.read(meta['nbytes'])
+        """
+        with open(a._npy_filename(), 'rb') as f:
+            buf = f.read(meta['nbytes'])
         print('  - buffer loaded:', buf[:10], file=sys.stderr)
         a._data = np.frombuffer(buf, dtype=meta['dtype'])
         return a
@@ -265,7 +287,8 @@ class AudioCache(MutableMapping):
             return self.d[key]
         filename = self._npy_filename(key)
         if os.path.isfile(filename):
-            value = Audio.load_from_cache(key)
+            with LOCK:
+                value = Audio.load_from_cache(key)
             self.d[key] = value
             return value
         raise KeyError(f"Could not find {key} in-memory or on disk")
@@ -282,7 +305,8 @@ class AudioCache(MutableMapping):
         for i in range(1, 4):
             try:
                 print(f'  - trying to dump ({i}/3)', file=sys.stderr)
-                value.save_to_cache()
+                with LOCK:
+                    value.save_to_cache()
                 print(f'  - success!', file=sys.stderr)
                 break
             except Exception:
