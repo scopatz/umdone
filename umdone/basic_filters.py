@@ -1,5 +1,5 @@
+"""Basic audio filters"""
 import sys
-import argparse
 
 import numpy as np
 
@@ -7,7 +7,6 @@ import librosa.core
 import librosa.util
 import librosa.effects
 
-from umdone import cli
 from umdone.tools import cache
 from umdone.sound import Audio
 
@@ -81,26 +80,42 @@ def reduce_noise(noisy, outfile=None, norm=True):
     return reduced
 
 
-_PARSER = None
+@cache
+def _remove_silence(inp, sr=None, reduce_to=0.0):
+    inp = Audio.from_hash_or_init(inp, sr=sr)
+    sr = inp.sr
+    non_silent_intervals = librosa.effects.split(inp.data)
+    silent_intervals = complement_intervals(non_silent_intervals,
+                                            size=len(inp.data))
+    reduce_to_samp = int(reduce_to * sr)
+    long_silences_mask = (silent_intervals[:,1] - silent_intervals[:,0]) > reduce_to_samp
+    long_silences = silent_intervals[long_silences_mask]
+    keep_intervals = complement_intervals(long_silences, size=len(inp.data))
+    mask = intervals_to_mask(keep_intervals, len(inp.data))
+    out = Audio(inp.data[mask], sr)
+    return out.hash_str()
 
 
-def _make_parser():
-    global _PARSER
-    if _PARSER is not None:
-        return _PARSER
-    parser = argparse.ArgumentParser('nr')
-    cli.add_input(parser)
-    cli.add_output(parser)
-    _PARSER = parser
-    return _PARSER
+def remove_silence(inp, reduce_to=0.0):
+    """Reduces noise in audio
 
+    Parameters
+    ----------
+    inp : str or Audio
+        Input audio. If this is a string, it will be read in from
+        a file. If this is an Audio instance, it will be used directly.
+    reduce_to : int or float, optional
+        The amount of time (in sec) to which silences should be reduced.
+        Silences shorter than this time are not replaced. For example,
+        if this parameter is 1 sec, a 10 sec silence will become a 1 sec
+        silence, while a 0.5 sec silence will remain 0.5 sec long.
 
-def main(args=None):
-    """Main noise reduction"""
-    parser = _make_parser()
-    ns = parser.parse_args(args=args)
-    reduce_noise(ns.input, ns.output)
-
-
-if __name__ == '__main__':
-    main()
+    Returns
+    -------
+    out : Audio
+    """
+    if isinstance(inp, Audio):
+        inp = inp.hash_str()
+    out = _remove_silence(inp, reduce_to=reduce_to)
+    out = Audio.from_hash(out)
+    return out
