@@ -16,9 +16,8 @@ from xonsh.proc import QueueReader, NonBlockingFDReader
 from umdone.sound import Audio, LOCK
 
 
-AUDIO_PIPELINE_STASH = LifoQueue()
+NEXT_IN_PIPELINE = None
 GOTTEN = object()
-#LOCK = RLock()
 
 """
 def _stash_get_audio(stdin, stderr, spec):
@@ -65,7 +64,6 @@ def _stash_get_audio(stdin, stderr, spec):
     if spec.last_in_pipeline:
         AUDIO_PIPELINE_STASH.clear()
     return audio
-"""
 
 def _stash_get_audio(stdin, stderr, spec):
     while AUDIO_PIPELINE_STASH.qsize() < spec.pipeline_index:
@@ -76,6 +74,13 @@ def _stash_get_audio(stdin, stderr, spec):
         while not AUDIO_PIPELINE_STASH.empty():
             AUDIO_PIPELINE_STASH.get()
     return audio
+"""
+
+
+def _stash_get_audio(stdin, stderr, spec):
+    global NEXT_IN_PIPELINE
+    audio, NEXT_IN_PIPELINE = NEXT_IN_PIPELINE, None
+    return audio
 
 
 def audio_in(f):
@@ -84,7 +89,7 @@ def audio_in(f):
     """
     @functools.wraps(f)
     def dec(args, stdin=None, stdout=None, stderr=None, spec=None, stack=None):
-      with LOCK:
+      #with LOCK:
         audio = _stash_get_audio(stdin, stderr, spec)
         return f(audio, args, stdin=stdin, stdout=stdout, stderr=stderr, spec=spec)
     #dec.__xonsh_threadable__ = False
@@ -114,11 +119,17 @@ def _stash_set_audio(audio, stdout, stderr, spec):
 def _stash_set_audio(audio, stdout, stderr, spec):
     AUDIO_PIPELINE_STASH[spec.pipeline_index+1] = audio
     return 0
-"""
 
 
 def _stash_set_audio(audio, stdout, stderr, spec):
     AUDIO_PIPELINE_STASH.put(audio)
+    return 0
+"""
+
+
+def _stash_set_audio(audio, stdout, stderr, spec):
+    global NEXT_IN_PIPELINE
+    NEXT_IN_PIPELINE = audio
     return 0
 
 
@@ -128,7 +139,7 @@ def audio_out(f):
     """
     @functools.wraps(f)
     def dec(args, stdin=None, stdout=None, stderr=None, spec=None, stack=None):
-      with LOCK:
+      #with LOCK:
         audio = f(args, stdin=stdin, stdout=stdout, stderr=stderr, spec=spec)
         rtn = _stash_set_audio(audio, stdout, stderr, spec)
         return rtn
@@ -142,7 +153,7 @@ def audio_io(f):
     """
     @functools.wraps(f)
     def dec(args, stdin=None, stdout=None, stderr=None, spec=None, stack=None):
-      with LOCK:
+      #with LOCK:
         ain = _stash_get_audio(stdin, stderr, spec)
         aout = f(ain, args, stdin=stdin, stdout=stdout, stderr=stderr, spec=spec)
         rtn = _stash_set_audio(aout, stdout, stderr, spec)
