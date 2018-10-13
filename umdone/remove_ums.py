@@ -42,7 +42,6 @@ def _remove_umms(audio, mfccs, distances, categories, window_length=0.05, noise_
                                 threshold=noise_threshold)
     matches = match(x, sr, bounds, mfccs, distances, categories)
     y = segment.remove_slices(x.T, matches)
-    print('matches: ', matches, file=sys.stderr)
     out = Audio(y, sr)
     return out
 
