@@ -100,9 +100,14 @@ class SoundDevicePopUpDialog(urwid.PopUpTarget):
 class SoundDevicePopUp(urwid.PopUpLauncher):
     def __init__(self, parent):
         self.parent = parent
-        self.__super.__init__(urwid.Button("click-me"))
+        self.button = urwid.Button(self.sound_device_label())
+        #self.button = urwid.AttrWrap(b, 'button normal', 'button select')
+        self.__super.__init__(self.button)
         urwid.connect_signal(self.original_widget, 'click',
             lambda button: self.open_pop_up())
+
+    def sound_device_label(self):
+        return "Set sound device (" + str(self.parent.controller.model.device) + ")"
 
     def create_pop_up(self):
         pop_up = SoundDevicePopUpDialog()
@@ -191,10 +196,6 @@ class TrainerView(urwid.WidgetWrap, urwid.PopUpLauncher):
     def on_cat_button(self, button, i):
         self.controller.select_category(i)
 
-    #def on_set_device(self, button):
-        #self.open_pop_up()
-    #    self.create_pop_up()
-
     def on_unicode_checkbox(self, w, state):
         self.graph = self.bar_graph(state)
         self.graph_wrap._w = self.graph
@@ -267,7 +268,7 @@ class TrainerView(urwid.WidgetWrap, urwid.PopUpLauncher):
               urwid.Divider(),
               self.progress_wrap,
               urwid.Divider(),
-              SoundDevicePopUp(self),
+              urwid.AttrWrap(SoundDevicePopUp(self), 'button normal', 'button select'),
               self.button("Save and quit", self.save_and_exit_program),
               self.button("Quit without saving", self.exit_program),
               ]
