@@ -228,6 +228,8 @@ class TrainerView(urwid.WidgetWrap, urwid.PopUpLauncher):
         model = self.controller.model
         if model.current_segment in model.categories:
             c = model.valid_categories[model.categories[model.current_segment]][1]
+            pre, _, post = c.rpartition('(')
+            c = pre.strip() + ' (' + post
             c = 'Categorized as ' + c
         else:
             c = 'Uncategorized'
