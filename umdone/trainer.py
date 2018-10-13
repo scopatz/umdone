@@ -27,12 +27,13 @@ class TrainerModel(object):
         (3, 'other non-word'),
         )
 
-    def __init__(self, fname, window_length=0.05, threshold=0.01, n_mfcc=13):
+    def __init__(self, fname, window_length=0.05, threshold=0.01, n_mfcc=13, device=None):
         # settings
         self.filename = fname
         self.window_length = window_length
         self.threshold = threshold
         self.n_mfcc = n_mfcc
+        self.device = None
 
         # data
         self.current_segment = 0
@@ -82,7 +83,37 @@ class TrainerModel(object):
         umdone.io.save(outfile, self.mfccs, cats, distances=self.distances)
 
 
-class TrainerView(urwid.WidgetWrap):
+class PopUpDialog(urwid.PopUpTarget):
+    """A dialog that appears with nothing but a close button """
+    signals = ['close']
+    def __init__(self):
+        close_button = urwid.Button("that's pretty cool")
+        urwid.connect_signal(close_button, 'click',
+            lambda button:self._emit("close"))
+        pile = urwid.Pile([urwid.Text(
+            "^^  I'm attached to the widget that opened me. "
+            "Try resizing the window!\n"), close_button])
+        fill = urwid.Filler(pile)
+        self.__super.__init__(urwid.AttrWrap(fill, 'popbg'))
+
+
+class ThingWithAPopUp(urwid.PopUpLauncher):
+    def __init__(self):
+        self.__super.__init__(urwid.Button("click-me"))
+        urwid.connect_signal(self.original_widget, 'click',
+            lambda button: self.open_pop_up())
+
+    def create_pop_up(self):
+        pop_up = PopUpDialog()
+        urwid.connect_signal(pop_up, 'close',
+            lambda button: self.close_pop_up())
+        return pop_up
+
+    def get_pop_up_parameters(self):
+        return {'left':0, 'top':1, 'overlay_width':32, 'overlay_height':7}
+
+
+class TrainerView(urwid.WidgetWrap, urwid.PopUpLauncher):
     """
     A class responsible for providing the application's interface and
     graph display.
@@ -104,6 +135,7 @@ class TrainerView(urwid.WidgetWrap):
         ('pg normal',    'white',      'black', 'standout'),
         ('pg complete',  'white',      'dark magenta'),
         ('pg smooth',    'dark magenta','black'),
+        ('popbg', 'white', 'dark blue'),
         ]
 
     graph_num_bars = 100
@@ -158,6 +190,10 @@ class TrainerView(urwid.WidgetWrap):
     def on_cat_button(self, button, i):
         self.controller.select_category(i)
 
+    #def on_set_device(self, button):
+        #self.open_pop_up()
+    #    self.create_pop_up()
+
     def on_unicode_checkbox(self, w, state):
         self.graph = self.bar_graph(state)
         self.graph_wrap._w = self.graph
@@ -205,11 +241,19 @@ class TrainerView(urwid.WidgetWrap):
         raise urwid.ExitMainLoop()
 
     def graph_controls(self):
+        # setup animate button
+        device_controls = urwid.GridFlow([
+            urwid.Text("Device:"),
+            urwid.Text(str(self.controller.model.device)),
+            #self.button("set", self.on_set_device),
+            ThingWithAPopUp()
+            ], 10, 3, 0, 'center')
+
         # setup category buttons
         vc = self.controller.model.valid_categories
         self.category_buttons = [self.button(cat, self.on_cat_button, i)
                                  for i, cat in vc]
-        # setup animate button
+
         nav_controls = urwid.GridFlow([
             self.button(" prev ", self.on_nav_button, -1),
             self.button("replay", self.on_nav_button, 0),
@@ -219,7 +263,8 @@ class TrainerView(urwid.WidgetWrap):
         self.progress = self.progress_bar(done=self.controller.model.runtime)
         self.progress_wrap = urwid.WidgetWrap(self.progress)
 
-        l = [urwid.Text("Categories", align="center")]
+        l = [device_controls, urwid.Divider()]
+        l += [urwid.Text("Categories", align="center")]
         l += self.category_buttons
         l += [urwid.Divider(),
               urwid.Text("Navigation", align="center"),
