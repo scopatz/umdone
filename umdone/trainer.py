@@ -83,7 +83,7 @@ class TrainerModel(object):
         umdone.io.save(outfile, self.mfccs, cats, distances=self.distances)
 
 
-class PopUpDialog(urwid.PopUpTarget):
+class SoundDevicePopUpDialog(urwid.PopUpTarget):
     """A dialog that appears with nothing but a close button """
     signals = ['close']
     def __init__(self):
@@ -97,14 +97,15 @@ class PopUpDialog(urwid.PopUpTarget):
         self.__super.__init__(urwid.AttrWrap(fill, 'popbg'))
 
 
-class ThingWithAPopUp(urwid.PopUpLauncher):
-    def __init__(self):
+class SoundDevicePopUp(urwid.PopUpLauncher):
+    def __init__(self, parent):
+        self.parent = parent
         self.__super.__init__(urwid.Button("click-me"))
         urwid.connect_signal(self.original_widget, 'click',
             lambda button: self.open_pop_up())
 
     def create_pop_up(self):
-        pop_up = PopUpDialog()
+        pop_up = SoundDevicePopUpDialog()
         urwid.connect_signal(pop_up, 'close',
             lambda button: self.close_pop_up())
         return pop_up
@@ -241,19 +242,12 @@ class TrainerView(urwid.WidgetWrap, urwid.PopUpLauncher):
         raise urwid.ExitMainLoop()
 
     def graph_controls(self):
-        # setup animate button
-        device_controls = urwid.GridFlow([
-            urwid.Text("Device:"),
-            urwid.Text(str(self.controller.model.device)),
-            #self.button("set", self.on_set_device),
-            ThingWithAPopUp()
-            ], 10, 3, 0, 'center')
-
         # setup category buttons
         vc = self.controller.model.valid_categories
         self.category_buttons = [self.button(cat, self.on_cat_button, i)
                                  for i, cat in vc]
 
+        # setup animate button
         nav_controls = urwid.GridFlow([
             self.button(" prev ", self.on_nav_button, -1),
             self.button("replay", self.on_nav_button, 0),
@@ -263,8 +257,7 @@ class TrainerView(urwid.WidgetWrap, urwid.PopUpLauncher):
         self.progress = self.progress_bar(done=self.controller.model.runtime)
         self.progress_wrap = urwid.WidgetWrap(self.progress)
 
-        l = [device_controls, urwid.Divider()]
-        l += [urwid.Text("Categories", align="center")]
+        l = [urwid.Text("Categories", align="center")]
         l += self.category_buttons
         l += [urwid.Divider(),
               urwid.Text("Navigation", align="center"),
@@ -274,6 +267,7 @@ class TrainerView(urwid.WidgetWrap, urwid.PopUpLauncher):
               urwid.Divider(),
               self.progress_wrap,
               urwid.Divider(),
+              SoundDevicePopUp(self),
               self.button("Save and quit", self.save_and_exit_program),
               self.button("Quit without saving", self.exit_program),
               ]
