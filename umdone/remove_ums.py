@@ -15,10 +15,10 @@ def remove_umms(ns):
     if ns.output is None:
         ns.output = '{0}-umdone{1}'.format(*os.path.splitext(ns.input))
     x, sr = librosa.load(ns.input, mono=True, sr=None)
-    bounds = segment.boundaries(x, sr, window_length=ns.window_length, 
+    bounds = segment.boundaries(x, sr, window_length=ns.window_length,
                                 threshold=ns.noise_threshold)
     mfccs, distances, categories = umdone.io.load(ns.train)
-    matches = discover.match(x, sr, bounds, mfccs, distances, categories) 
+    matches = discover.match(x, sr, bounds, mfccs, distances, categories)
     del x, sr, bounds, mfccs, distances, categories
     # read back in to preserve mono/stereo and levels on output
     x, sr = librosa.load(ns.input, mono=False, sr=None)

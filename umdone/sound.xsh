@@ -283,6 +283,8 @@ class AudioCache(MutableMapping):
 
 
 AUDIO_CACHE = AudioCache(location=$UMDONE_CACHE_DIR)
+LABEL_CACHE_DIR = os.path.join($UMDONE_CACHE_DIR, 'labels')
+os.makedirs(LABEL_CACHE_DIR, exist_ok=True)
 
 
 if __name__ == '__main__':
