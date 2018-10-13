@@ -20,6 +20,8 @@ import librosa.core
 import librosa.output
 from scipy.io import wavfile
 
+import sounddevice as sd
+
 from xonsh.tools import print_color
 from xonsh.proc import QueueReader, NonBlockingFDReader
 
@@ -63,9 +65,10 @@ def play_posix(x, sr):
     return MPlayerWorker(x, sr)
 
 
-def play(x, sr):
+def play(x, sr, **kwargs):
     """Play's a numpy array that represents a wav file with a given sample rate."""
-    play_posix(x, sr)
+    #play_posix(x, sr)
+    sd.play(x, sr, **kwargs)
 
 
 @cache

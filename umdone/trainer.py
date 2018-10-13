@@ -37,8 +37,9 @@ class TrainerModel(object):
         # data
         self.current_segment = 0
         self.raw, self.sr = librosa.load(fname, mono=True, sr=None)
-        self.bounds = segment.boundaries(self.raw, self.sr, window_length=window_length, 
+        bounds = segment.boundaries(self.raw, self.sr, window_length=window_length,
                                          threshold=threshold)
+        self.bounds = bounds[bounds[:,0] < bounds[:,1]]
         self.nsegments = len(self.bounds)
         self.runtime = len(self.raw) / self.sr
 
@@ -138,7 +139,7 @@ class TrainerView(urwid.WidgetWrap):
         s = ("Clip {0} of {1}\n"
              "Duration {2:.3} sec\n"
              "{3}"
-             ).format(model.current_segment + 1, model.nsegments, 
+             ).format(model.current_segment + 1, model.nsegments,
                       len(model.clip) / model.sr, c)
         self.status.set_text(s)
 
@@ -206,7 +207,7 @@ class TrainerView(urwid.WidgetWrap):
     def graph_controls(self):
         # setup category buttons
         vc = self.controller.model.valid_categories
-        self.category_buttons = [self.button(cat, self.on_cat_button, i) 
+        self.category_buttons = [self.button(cat, self.on_cat_button, i)
                                  for i, cat in vc]
         # setup animate button
         nav_controls = urwid.GridFlow([
@@ -254,13 +255,13 @@ class TrainerDisplay(object):
 
     def __init__(self, ns):
         self.ns = ns
-        self.model = TrainerModel(ns.input, window_length=ns.window_length, 
+        self.model = TrainerModel(ns.input, window_length=ns.window_length,
                                   threshold=ns.noise_threshold, n_mfcc=ns.n_mfcc)
         self.view = TrainerView(self)
         self.view.update_segment()
 
     def select_category(self, cat):
-        s = self.model.current_segment 
+        s = self.model.current_segment
         self.model.categories[s] = cat
         self.select_segment(s+1)
 
