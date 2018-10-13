@@ -1,60 +1,102 @@
-"""Main functionality for umdone."""
+"""Remove Umms (and similar) from audio."""
 import os
-from argparse import ArgumentParser
 
 import librosa
+import numpy as np
+from sklearn import svm
+
+from umdone import dtw
 
 import umdone.io
-from umdone import cli
-from umdone import trainer
 from umdone import segment
-from umdone import discover
+from umdone.tools import cache
+from umdone.sound import Audio
 
 
-def remove_umms(ns):
-    if ns.output is None:
-        ns.output = '{0}-umdone{1}'.format(*os.path.splitext(ns.input))
-    x, sr = librosa.load(ns.input, mono=True, sr=None)
-    bounds = segment.boundaries(x, sr, window_length=ns.window_length,
-                                threshold=ns.noise_threshold)
-    mfccs, distances, categories = umdone.io.load(ns.train)
-    matches = discover.match(x, sr, bounds, mfccs, distances, categories)
-    del x, sr, bounds, mfccs, distances, categories
-    # read back in to preserve mono/stereo and levels on output
-    x, sr = librosa.load(ns.input, mono=False, sr=None)
+def match(x, sr, bounds, mfccs, distances, categories):
+    """Finds the matches to the training data in x that is in valid the bounds.
+    Returns the matched bou nds.
+    """
+    # data setup
+    n_mfcc = mfccs[0].shape[1]
+    d = np.empty((len(bounds), len(distances)), 'f8')
+    for i, (l, u) in enumerate(bounds):
+        clip = x[l:u]
+        clip_mfcc = librosa.feature.mfcc(clip, sr, n_mfcc=n_mfcc).T
+        for j, mfcc in enumerate(mfccs):
+            d[i, j] = dtw.distance(clip_mfcc, mfcc)
+    # learn stuff
+    classifier = svm.SVC(gamma=0.001)
+    classifier.fit(distances, categories)
+    results = classifier.predict(d)
+    # words = 0 and ambiguous = 1, so we want to discard cases > 1,
+    # ie umm/like/etc = 2 and non-words = 3
+    matches = bounds[results > 1]
+    return matches
+
+
+def _remove_umms(audio, mfccs, distances, categories, window_length=0.05, noise_threshold=0.01):
+    x, sr = audio.data, audio.sr
+    bounds = segment.boundaries(x, sr, window_length=window_length,
+                                threshold=noise_threshold)
+    matches = match(x, sr, bounds, mfccs, distances, categories)
     y = segment.remove_slices(x.T, matches)
-    librosa.output.write_wav(ns.output, y.T, sr, norm=False)
+    out = Audio(y, sr)
+    return out
 
 
-def remove_add_arguments(parser):
-    cli.add_output(parser)
-    cli.add_window_length(parser)
-    cli.add_noise_threshold(parser)
-    cli.add_train_argument(parser)
-    cli.add_input(parser)
+@cache
+def _remove_umms_cacheable(audio_hash, dbfiles, window_length=0.05, noise_threshold=0.01):
+    audio = Audio.from_hash(audio_hash)
+    mfccs, distances, categories = umdone.io.load(dbfiles)
+    out = _remove_umms(audio, mfccs, distances, categories,
+                       window_length=window_length, noise_threshold=noise_threshold)
+    return out.hash_str()
 
 
-MAINS = {
-    'train': trainer.main,
-    'rm': remove_umms,
-    }
+def remove_umms(audio, dbfiles=None, mfccs=None, distances=None, categories=None,
+                window_length=0.05, noise_threshold=0.01):
+    """Filters out umms and other unwanted clips from audio using support vector
+    classification.
 
-def main(args=None):
-    """Main umdone entry point."""
-    parser = ArgumentParser('umdone')
-    subparsers = parser.add_subparsers(dest='cmd', help='sub-command help')
+    Parameters
+    ----------
+    audio : Audio or str
+        Audio instance, or a string loadable as such
+    dbfiles : str, list of str, or None, optional
+        The training database files to load. If this is None, mfccs, distances,
+        and categories must be supplied.
+    mfccs : list of ndarrays or None, optional
+        MFCCs, if None, dbfiles must not be None,
+    distances : float ndarray or None, optional
+        distances, if None, dbfiles must not be None.
+    categories : int ndarray or None, optional
+        categories, if None, dbfiles must not be None.
+    window_length : float, optional
+        Word boundary window length
+    noise_threshold : float, optional
+        Noise threshold on words vs quiet
 
-    # train
-    parser_train = subparsers.add_parser('train', help='create a training dataset')
-    trainer.add_arguments(parser_train)
-
-    # remove umms
-    parser_rm = subparsers.add_parser('rm', help='remove umms')
-    remove_add_arguments(parser_rm)
-
-    ns = parser.parse_args(args)
-    MAINS[ns.cmd](ns)
-
-
-if __name__ == '__main__':
-    main()
+    Returns
+    -------
+    out : Audio
+        Version of audio with umms removed or reduced.
+    """
+    # make sure we have an Audio object
+    if isinstance(audio, str):
+        audio = Audio(audio)
+    # figure out which command to call.
+    if dbfiles is not None:
+        # yes, we are in a cacheable situation
+        out_hash = _remove_umms_cachable(audio.hash_str(), dbfiles,
+                                         window_length=window_length,
+                                         noise_threshold=noise_threshold)
+        out = Audio.from_hash(out_hash)
+    elif mfccs is not None and distances is not None and categories is not None:
+        # just do the comuptation
+        out = _remove_umms(audio, mfccs, distances, categories,
+                           window_length=window_length, noise_threshold=noise_threshold)
+    else:
+        raise ValueError('either dbfiles must not be None, or mfccs, distances, '
+                         'and categories must all not be None')
+    return out

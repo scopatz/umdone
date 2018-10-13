@@ -73,7 +73,7 @@ def _unflatten_mfccs(flat_mfccs, lens):
     return mfccs
 
 
-def load(fname):
+def load_file(fname):
     with tb.open_file(fname, 'r') as f:
         dists = f.root.distances[:]
         cats = f.root.categories[:]
@@ -83,3 +83,18 @@ def load(fname):
     return mfccs, dists, cats
 
 
+def load(fnames):
+    """Loads one or many database files"""
+    if isinstance(fname, str):
+        return load_file(fnames)
+    mfccs = []
+    dists = []
+    cats = = []
+    for fname in fnames:
+        m, d, c = load_file(fname)
+        mfccs.extend(m)
+        dists.append(d)
+        cats.append(c)
+    dists = np.concatenate(dists)
+    cats = np.concatenate(cats)
+    return mfccs, dists, cats
