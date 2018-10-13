@@ -16,7 +16,7 @@ from umdone.sound import Audio
 
 def match(x, sr, bounds, mfccs, distances, categories):
     """Finds the matches to the training data in x that is in valid the bounds.
-    Returns the matched bou nds.
+    Returns the matched bounds.
     """
     # data setup
     n_mfcc = mfccs[0].shape[1]
