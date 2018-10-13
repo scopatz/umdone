@@ -139,9 +139,14 @@ class SoundDevicePopUp(urwid.PopUpLauncher):
         self.button.set_label(self.sound_device_label())
 
     def get_pop_up_parameters(self):
-        #max_name = max(map(len, map(lambda d: d['name'], self.model.output_devices)))
-        max_name = 20
-        return {'left':-10, 'top':-10, 'overlay_width':max_name + 8, 'overlay_height': len(self.model.output_devices) + 2}
+        names = [d['name'] for d in self.model.output_devices.values()]
+        max_name_len = max(map(len, names))
+        n_outputs = len(self.model.output_devices)
+        return {
+            'left': -21,
+            'top':-(n_outputs//2) - 1,
+            'overlay_width':max_name_len + 12,
+            'overlay_height': n_outputs + 2}
 
 
 class TrainerView(urwid.WidgetWrap, urwid.PopUpLauncher):
@@ -338,7 +343,7 @@ class TrainerDisplay(object):
         self.model.current_segment = s
         clip = self.model.clip
         self.view.update_segment()
-        self.loop.set_alarm_in(0.001, lambda w, d: sound.play(clip, self.model.sr))
+        self.loop.set_alarm_in(0.001, lambda w, d: sound.play(clip, self.model.sr, device=self.model.device))
 
     def offset_current_segment(self, offset):
         s = self.model.current_segment
