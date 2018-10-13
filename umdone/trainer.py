@@ -9,6 +9,8 @@ import librosa
 import numpy as np
 import tables as tb
 
+import sounddevice as sd
+
 import umdone.io
 from umdone import cli
 from umdone import dtw
@@ -33,7 +35,10 @@ class TrainerModel(object):
         self.window_length = window_length
         self.threshold = threshold
         self.n_mfcc = n_mfcc
+
+        # sound devices
         self.device = None
+        self._output_devices = None
 
         # data
         self.current_segment = 0
@@ -51,6 +56,15 @@ class TrainerModel(object):
     def clip(self):
         l, u = self.bounds[self.current_segment]
         return self.raw[l:u]
+
+    @property
+    def output_devices(self):
+        if self._output_devices is not None:
+            return self._output_devices
+        outs = {i: d for i, d in enumerate(sd.query_devices())
+                if d.get('max_output_channels', 0) > 0}
+        self._output_devices = outs
+        return outs
 
     def segement_order(self):
         return sorted(self.categories.keys())
@@ -85,38 +99,49 @@ class TrainerModel(object):
 
 class SoundDevicePopUpDialog(urwid.PopUpTarget):
     """A dialog that appears with nothing but a close button """
+
     signals = ['close']
-    def __init__(self):
-        close_button = urwid.Button("that's pretty cool")
-        urwid.connect_signal(close_button, 'click',
-            lambda button:self._emit("close"))
-        pile = urwid.Pile([urwid.Text(
-            "^^  I'm attached to the widget that opened me. "
-            "Try resizing the window!\n"), close_button])
-        fill = urwid.Filler(pile)
-        self.__super.__init__(urwid.AttrWrap(fill, 'popbg'))
+
+    def __init__(self, model):
+        self.model = model
+        body = [urwid.Text("Output Devices", align="center"), urwid.Divider()]
+        for i, dev in model.output_devices.items():
+            button = urwid.Button(f"Dev {i}: {dev['name']}")
+            urwid.connect_signal(button, 'click', self.on_device_select, i)
+            body.append(urwid.AttrMap(button, None, focus_map='reversed'))
+        pile = urwid.ListBox(urwid.SimpleFocusListWalker(body))
+        self.__super.__init__(urwid.AttrWrap(pile, 'popbg'))
+
+    def on_device_select(self, button, device):
+        self.model.device = device
+        self._emit("close")
 
 
 class SoundDevicePopUp(urwid.PopUpLauncher):
-    def __init__(self, parent):
-        self.parent = parent
+
+    def __init__(self, model):
+        self.model = model
         self.button = urwid.Button(self.sound_device_label())
-        #self.button = urwid.AttrWrap(b, 'button normal', 'button select')
         self.__super.__init__(self.button)
         urwid.connect_signal(self.original_widget, 'click',
             lambda button: self.open_pop_up())
 
     def sound_device_label(self):
-        return "Set sound device (" + str(self.parent.controller.model.device) + ")"
+        return "Set sound device (" + str(self.model.device) + ")"
 
     def create_pop_up(self):
-        pop_up = SoundDevicePopUpDialog()
-        urwid.connect_signal(pop_up, 'close',
-            lambda button: self.close_pop_up())
+        pop_up = SoundDevicePopUpDialog(self.model)
+        urwid.connect_signal(pop_up, 'close', self.on_pop_up_close)
         return pop_up
 
+    def on_pop_up_close(self, button):
+        self.close_pop_up()
+        self.button.set_label(self.sound_device_label())
+
     def get_pop_up_parameters(self):
-        return {'left':0, 'top':1, 'overlay_width':32, 'overlay_height':7}
+        #max_name = max(map(len, map(lambda d: d['name'], self.model.output_devices)))
+        max_name = 20
+        return {'left':-10, 'top':-10, 'overlay_width':max_name + 8, 'overlay_height': len(self.model.output_devices) + 2}
 
 
 class TrainerView(urwid.WidgetWrap, urwid.PopUpLauncher):
@@ -268,7 +293,7 @@ class TrainerView(urwid.WidgetWrap, urwid.PopUpLauncher):
               urwid.Divider(),
               self.progress_wrap,
               urwid.Divider(),
-              urwid.AttrWrap(SoundDevicePopUp(self), 'button normal', 'button select'),
+              urwid.AttrWrap(SoundDevicePopUp(self.controller.model), 'button normal', 'button select'),
               self.button("Save and quit", self.save_and_exit_program),
               self.button("Quit without saving", self.exit_program),
               ]
