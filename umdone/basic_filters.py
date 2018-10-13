@@ -119,3 +119,11 @@ def remove_silence(inp, reduce_to=0.0):
     out = _remove_silence(inp, reduce_to=reduce_to)
     out = Audio.from_hash(out)
     return out
+
+
+def afade(n, base=10, dtype='f4'):
+    """Creates a fade-in array of length-n for a given base."""
+    t = np.linspace(0.0, np.log(base+1)/np.log(base), n, dtype=dtype)
+    f = np.power(base, t)/base - (1/base)
+    return f
+
