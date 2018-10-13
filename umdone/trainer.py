@@ -28,10 +28,10 @@ class TrainerModel(object):
     max_val = 1
     min_val = -1
     valid_categories = (
-        (0, 'word'),
-        (1, 'ummm'),
-        (2, 'like'),
-        (3, 'other non-word'),
+        (0, 'word              (keep)'),
+        (1, 'ambiguous         (keep)'),
+        (2, 'ummm, like, etc.  (discard)'),
+        (3, 'non-word          (discard)'),
         )
 
     default_settings = {'device': None}

@@ -1,6 +1,6 @@
 """Discovery functions."""
 import numpy as np
-import librosa 
+import librosa
 from sklearn import svm
 
 from umdone import dtw
@@ -22,6 +22,8 @@ def match(x, sr, bounds, mfccs, distances, categories):
     classifier = svm.SVC(gamma=0.001)
     classifier.fit(distances, categories)
     results = classifier.predict(d)
-    matches = bounds[results > 0]
+    # words = 0 and ambiguous = 1, so we want to discard cases > 1,
+    # ie umm/like/etc = 2 and non-words = 3
+    matches = bounds[results > 1]
     return matches
 
