@@ -119,8 +119,9 @@ class SoundDevicePopUpDialog(urwid.PopUpTarget):
 
 class SoundDevicePopUp(urwid.PopUpLauncher):
 
-    def __init__(self, model):
-        self.model = model
+    def __init__(self, parent):
+        self.parent = parent
+        self.model = parent.controller.model
         self.button = urwid.Button(self.sound_device_label())
         self.__super.__init__(self.button)
         urwid.connect_signal(self.original_widget, 'click',
@@ -137,6 +138,8 @@ class SoundDevicePopUp(urwid.PopUpLauncher):
     def on_pop_up_close(self, button):
         self.close_pop_up()
         self.button.set_label(self.sound_device_label())
+        self.parent.status.set_text("Sound device set to " + \
+                                    self.model.output_devices[self.model.device]['name'])
 
     def get_pop_up_parameters(self):
         names = [d['name'] for d in self.model.output_devices.values()]
@@ -298,7 +301,7 @@ class TrainerView(urwid.WidgetWrap, urwid.PopUpLauncher):
               urwid.Divider(),
               self.progress_wrap,
               urwid.Divider(),
-              urwid.AttrWrap(SoundDevicePopUp(self.controller.model), 'button normal', 'button select'),
+              urwid.AttrWrap(SoundDevicePopUp(self), 'button normal', 'button select'),
               self.button("Save and quit", self.save_and_exit_program),
               self.button("Quit without saving", self.exit_program),
               ]
@@ -335,6 +338,13 @@ class TrainerDisplay(object):
         self.model.categories[s] = cat
         self.select_segment(s+1)
 
+    def play(self, clip):
+        """Plays a sound safely"""
+        try:
+            sound.play(clip, self.model.sr, device=self.model.device)
+        except Exception:
+            self.view.status.set_text("could not play audio clip!")
+
     def select_segment(self, s):
         if s < 0:
             s = 0
@@ -343,7 +353,7 @@ class TrainerDisplay(object):
         self.model.current_segment = s
         clip = self.model.clip
         self.view.update_segment()
-        self.loop.set_alarm_in(0.001, lambda w, d: sound.play(clip, self.model.sr, device=self.model.device))
+        self.loop.set_alarm_in(0.001, lambda w, d: self.play(clip))
 
     def offset_current_segment(self, offset):
         s = self.model.current_segment

@@ -15,10 +15,10 @@ def save(fname, mfccs, categories, distances=None):
     Parameters
     ----------
     fname : str
-        Filename 
+        Filename
     mfccs : list of arrays
         MFCCs
-    categories : 
+    categories :
     """
     # data prep
     n = len(mfccs)
@@ -32,7 +32,7 @@ def save(fname, mfccs, categories, distances=None):
         _save_append(fname, mfccs, flat_mfccs, categories, distances, mfcc_lens)
     else:
         _save_new(fname, mfccs, flat_mfccs, categories, distances, mfcc_lens)
-        
+
 
 def _save_new(fname, mfccs, flat_mfccs, categories, distances, lengths):
     if distances is None:
