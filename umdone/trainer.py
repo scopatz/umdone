@@ -2,6 +2,7 @@
 from __future__ import unicode_literals, print_function
 import os
 import sys
+import json
 from argparse import ArgumentParser
 
 import urwid
@@ -16,6 +17,10 @@ from umdone import cli
 from umdone import dtw
 from umdone import sound
 from umdone import segment
+from umdone.tools import UMDONE_CONFIG_DIR
+
+
+TRAINER_SETTINGS_FILE = os.path.join(UMDONE_CONFIG_DIR, 'trainer.json')
 
 
 class TrainerModel(object):
@@ -29,22 +34,27 @@ class TrainerModel(object):
         (3, 'other non-word'),
         )
 
-    def __init__(self, fname, window_length=0.05, threshold=0.01, n_mfcc=13, device=None):
+    default_settings = {'device': None}
+
+    def __init__(self, audio, window_length=0.05, threshold=0.01, n_mfcc=13, device=-1):
         # settings
-        self.filename = fname
+        self.load_settings()
         self.window_length = window_length
         self.threshold = threshold
         self.n_mfcc = n_mfcc
 
         # sound devices
-        self.device = None
+        if device is None or device >= 0:
+            self.device = device
         self._output_devices = None
 
         # data
         self.current_segment = 0
-        self.raw, self.sr = librosa.load(fname, mono=True, sr=None)
+        self.audio = audio if isinstance(audio, sound.Audio) else \
+                     sound.Audio.from_hash_or_init(audio)
+        self.raw, self.sr = self.audio.data, self.audio.sr
         bounds = segment.boundaries(self.raw, self.sr, window_length=window_length,
-                                         threshold=threshold)
+                                    threshold=threshold)
         self.bounds = bounds[bounds[:,0] < bounds[:,1]]
         self.nsegments = len(self.bounds)
         self.runtime = len(self.raw) / self.sr
@@ -96,6 +106,19 @@ class TrainerModel(object):
         cats = [self.categories[seg] for seg in order]
         umdone.io.save(outfile, self.mfccs, cats, distances=self.distances)
 
+    def save_settings(self):
+        settings = {'device': self.device}
+        with open(TRAINER_SETTINGS_FILE, 'w') as f:
+            json.dump(settings, f)
+
+    def load_settings(self):
+        if os.path.isfile(TRAINER_SETTINGS_FILE):
+            with open(TRAINER_SETTINGS_FILE, 'r') as f:
+                settings = json.load(f)
+        else:
+            settings = self.default_settings
+        self.device = settings.get('device', None)
+
 
 class SoundDevicePopUpDialog(urwid.PopUpTarget):
     """A dialog that appears with nothing but a close button """
@@ -114,6 +137,7 @@ class SoundDevicePopUpDialog(urwid.PopUpTarget):
 
     def on_device_select(self, button, device):
         self.model.device = device
+        self.model.save_settings()
         self._emit("close")
 
 
@@ -326,10 +350,11 @@ class TrainerView(urwid.WidgetWrap, urwid.PopUpLauncher):
 
 class TrainerDisplay(object):
 
-    def __init__(self, ns):
-        self.ns = ns
-        self.model = TrainerModel(ns.input, window_length=ns.window_length,
-                                  threshold=ns.noise_threshold, n_mfcc=ns.n_mfcc)
+    def __init__(self, audio, dbfile, window_length=0.05, noise_threshold=0.01,
+                 n_mfcc=13, device=-1):
+        self.model = TrainerModel(audio, window_length=window_length,
+                                  threshold=noise_threshold, n_mfcc=n_mfcc)
+        self.dbfile = dbfile
         self.view = TrainerView(self)
         self.view.update_segment()
 
@@ -366,9 +391,9 @@ class TrainerDisplay(object):
         view.status.set_text('\nComputing MFCCs\n')
         model.compute_mfccs(view.progress.set_completion)
         view.status.set_text('\nComputing distance matrix\n')
-        model.compute_distances(self.ns.output, view.progress.set_completion)
+        model.compute_distances(self.dbfile, view.progress.set_completion)
         view.status.set_text('\nSaving\n')
-        model.save(self.ns.output)
+        model.save(self.dbfile)
 
     def main(self):
         self.loop = urwid.MainLoop(self.view, self.view.palette, pop_ups=True)
@@ -392,7 +417,8 @@ def main(ns=None, args=None):
         ns = parser.parse_args(args)
     if ns.output is None:
         ns.output = '{0}-umdone-training.h5'.format(os.path.splitext(ns.input)[0])
-    TrainerDisplay(ns).main()
+    TrainerDisplay(ns.input, ns.output, window_length=ns.window_length,
+                   noise_threshold=ns.noise_threshold, n_mfcc=ns.n_mfcc).main()
 
 
 if __name__ == '__main__':
