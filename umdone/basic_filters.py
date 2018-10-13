@@ -127,3 +127,9 @@ def afade(n, base=10, dtype='f4'):
     f = np.power(base, t)/base - (1/base)
     return f
 
+
+def cross_fade(x, y, n, base=10):
+    """Fades and x-array out while fading a y-array in over n points."""
+    f = afade(n, base=base, dtype=x.dtype)
+    out = np.concatenate([x[:-n], x[-n:]*f[::-1] + y[:n]*f ,y[n:]])
+    return out
