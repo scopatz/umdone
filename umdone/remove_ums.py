@@ -1,5 +1,6 @@
 """Remove Umms (and similar) from audio."""
 import os
+import sys
 
 import librosa
 import numpy as np
@@ -41,6 +42,7 @@ def _remove_umms(audio, mfccs, distances, categories, window_length=0.05, noise_
                                 threshold=noise_threshold)
     matches = match(x, sr, bounds, mfccs, distances, categories)
     y = segment.remove_slices(x.T, matches)
+    print('matches: ', matches, file=sys.stderr)
     out = Audio(y, sr)
     return out
 
@@ -88,9 +90,9 @@ def remove_umms(audio, dbfiles=None, mfccs=None, distances=None, categories=None
     # figure out which command to call.
     if dbfiles is not None:
         # yes, we are in a cacheable situation
-        out_hash = _remove_umms_cachable(audio.hash_str(), dbfiles,
-                                         window_length=window_length,
-                                         noise_threshold=noise_threshold)
+        out_hash = _remove_umms_cacheable(audio.hash_str(), dbfiles,
+                                          window_length=window_length,
+                                          noise_threshold=noise_threshold)
         out = Audio.from_hash(out_hash)
     elif mfccs is not None and distances is not None and categories is not None:
         # just do the comuptation

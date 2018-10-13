@@ -53,7 +53,7 @@ def main(audio_in, args, stdin=None, stdout=None, stderr=None, spec=None):
             print_color('{RED}Training database file ' + dbfile + ' does not exist!{NO_COLOR}',
                         file=stderr, flush=True)
             return 1
-    print('  - training database files:\n   * ' + '\n   * '.join(dbfiles), file=stderr, flush=True)
+    print('  - training database files:\n    * ' + '\n    * '.join(dbfiles), file=stderr, flush=True)
     import umdone.remove_ums
     audio_out = umdone.remove_ums.remove_umms(audio_in, dbfiles=dbfiles,
                                               window_length=ns.window_length,

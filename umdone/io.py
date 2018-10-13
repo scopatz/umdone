@@ -85,11 +85,11 @@ def load_file(fname):
 
 def load(fnames):
     """Loads one or many database files"""
-    if isinstance(fname, str):
+    if isinstance(fnames, str):
         return load_file(fnames)
     mfccs = []
     dists = []
-    cats = = []
+    cats = []
     for fname in fnames:
         m, d, c = load_file(fname)
         mfccs.extend(m)
