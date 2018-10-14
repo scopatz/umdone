@@ -128,8 +128,31 @@ def afade(n, base=10, dtype='f4'):
     return f
 
 
-def cross_fade(x, y, n, base=10):
+def cross_fade_arrays(x, y, n, base=10):
     """Fades and x-array out while fading a y-array in over n points."""
     f = afade(n, base=base, dtype=x.dtype)
     out = np.concatenate([x[:-n], x[-n:]*f[::-1] + y[:n]*f ,y[n:]])
     return out
+
+
+@cache
+def _cross_fade(a, b, sr=None, t=3.0, base=10):
+    a = Audio.from_hash_or_init(a, sr=sr)
+    b = Audio.from_hash_or_init(b, sr=sr)
+    assert a.sr == b.sr, 'sample rates must be equal to cross-fade'
+    sr = a.sr
+    n = t * sr
+    z = cross_fade_arrays(a.data, b.data, n, base=base)
+    c = Audio(z, sr)
+    return c.hash_str()
+
+
+def cross_fade(a, b, t=3.0, base=10):
+    """Fades an audio in and another one out simeltaneously over t seconds."""
+    if isinstance(a, Audio):
+        a = a.hash_str()
+    if isinstance(b, Audio):
+        b = b.hash_str()
+    c = _cross_fade(a, b, t=t, base=base)
+    c = Audio.from_hash(c)
+    return c
