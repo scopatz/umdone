@@ -15,12 +15,12 @@ import numpy as np
 
 import joblib
 
+from lazyasd import lazyobject
+
 import librosa
 import librosa.core
 import librosa.output
 from scipy.io import wavfile
-
-import sounddevice as sd
 
 from xonsh.tools import print_color
 from xonsh.proc import QueueReader, NonBlockingFDReader
@@ -28,6 +28,18 @@ from xonsh.proc import QueueReader, NonBlockingFDReader
 from umdone.tools import cache
 
 LOCK = RLock()
+
+
+@lazyobject
+def sd():
+    import sounddevice
+    return sounddevice
+
+
+@lazyobject
+def sf():
+    import soundfile
+    return soundfile
 
 
 def array_to_bytes(x, sr):
@@ -67,8 +79,18 @@ def play_posix(x, sr):
 
 def play(x, sr, **kwargs):
     """Play's a numpy array that represents a wav file with a given sample rate."""
-    #play_posix(x, sr)
     sd.play(x, sr, **kwargs)
+
+
+@cache
+def write_mp3(filename, audio, sr=None):
+    """Writes audio to an MP3 file."""
+    if not isinstance(audio, Audio):
+        audio = Audio.from_hash_or_init(audio, sr=sr)
+    # first we need to write this to a wav, then use FFMPEG to convert
+    with tempfile.NamedTemporaryFile() as f:
+        librosa.output.write_wav(f.name, audio.data, audio.sr)
+        ![ffmpeg -i @(f.name) @(filename)]
 
 
 @cache
@@ -184,7 +206,17 @@ class Audio:
         self.data, self.sr = load(filename)
 
     def save(self, filename):
-        librosa.output.write_wav(filename, self.data, self.sr, norm=True)
+        _, ext = os.pat.splitext(filename)
+        if ext == '.wav':
+            librosa.output.write_wav(filename, self.data, self.sr, norm=True)
+        elif ext == '.mp3':
+            write_mp3(filename, self.hash_str())
+        elif ext == '.flac':
+            sf.write(filename, self.data, self.sr, format='flac', subtype='PCM_24')
+        elif ext == '.ogg':
+            sf.write(filename, self.data, self.sr, format='ogg', subtype='vorbis')
+        else:
+            raise ValueError(f'audio extension {ext!r} not supported exportable format')
 
     def hash(self):
         if self._hash is None:
