@@ -4,7 +4,7 @@ from argparse import ArgumentParser
 
 from lazyasd import lazyobject
 
-from xonsh.tools import print_color
+from xonsh.tools import print_color, unthreadable, uncapturable
 
 from umdone.sound import Audio
 from umdone.commands import audio_in
@@ -21,6 +21,8 @@ def PARSER():
     return parser
 
 
+@uncapturable
+@unthreadable
 @audio_in
 def main(ain, args, stdin=None, stdout=None, stderr=None, spec=None):
     """Saves an audio file"""

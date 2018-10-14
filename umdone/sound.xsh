@@ -83,14 +83,16 @@ def play(x, sr, **kwargs):
 
 
 @cache
-def write_mp3(filename, audio, sr=None):
-    """Writes audio to an MP3 file."""
+def write_m4a(filename, audio, sr=None):
+    """Writes audio to an M4A file."""
     if not isinstance(audio, Audio):
         audio = Audio.from_hash_or_init(audio, sr=sr)
     # first we need to write this to a wav, then use FFMPEG to convert
     with tempfile.NamedTemporaryFile() as f:
         librosa.output.write_wav(f.name, audio.data, audio.sr)
-        ![ffmpeg -i @(f.name) @(filename)]
+        f.flush()
+        s = $(ffmpeg -y -i @(f.name) -strict experimental @(filename) e>o)
+        print(s, file=sys.stderr)
 
 
 @cache
@@ -206,11 +208,11 @@ class Audio:
         self.data, self.sr = load(filename)
 
     def save(self, filename):
-        _, ext = os.pat.splitext(filename)
+        _, ext = os.path.splitext(filename)
         if ext == '.wav':
             librosa.output.write_wav(filename, self.data, self.sr, norm=True)
-        elif ext == '.mp3':
-            write_mp3(filename, self.hash_str())
+        elif ext == '.m4a':
+            write_m4a(filename, self.hash_str())
         elif ext == '.flac':
             sf.write(filename, self.data, self.sr, format='flac', subtype='PCM_24')
         elif ext == '.ogg':
