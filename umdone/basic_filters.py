@@ -141,7 +141,7 @@ def _cross_fade(a, b, sr=None, t=3.0, base=10):
     b = Audio.from_hash_or_init(b, sr=sr)
     assert a.sr == b.sr, 'sample rates must be equal to cross-fade'
     sr = a.sr
-    n = t * sr
+    n = int(t * sr)
     z = cross_fade_arrays(a.data, b.data, n, base=base)
     c = Audio(z, sr)
     return c.hash_str()

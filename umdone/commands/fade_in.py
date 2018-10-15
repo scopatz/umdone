@@ -43,7 +43,7 @@ def main(audio_in, args, stdin=None, stdout=None, stderr=None, spec=None):
     print_color('{YELLOW}Fading in{NO_COLOR}', file=stderr, flush=True)
     print('  - audio in:', audio_in, file=stderr, flush=True)
     if ns.prefix is None:
-        prefix = Audio(np.zeros(ns.t*audio_in.sr), audio_in.sr)
+        prefix = Audio(np.zeros(int(ns.t*audio_in.sr)), audio_in.sr)
     else:
         print(f'  - fading in {ns.prefix}', file=stderr, flush=True)
         prefix = Audio(ns.prefix)

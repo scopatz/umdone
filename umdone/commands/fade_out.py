@@ -43,10 +43,10 @@ def main(audio_in, args, stdin=None, stdout=None, stderr=None, spec=None):
     print_color('{YELLOW}Fading out{NO_COLOR}', file=stderr, flush=True)
     print('  - audio in:', audio_in, file=stderr, flush=True)
     if ns.postfix is None:
-        postfix = Audio(np.zeros(ns.t*audio_in.sr), audio_in.sr)
+        postfix = Audio(np.zeros(int(ns.t*audio_in.sr)), audio_in.sr)
     else:
         print(f'  - fading out to {ns.postfix}', file=stderr, flush=True)
-        prefix = Audio(ns.prefix)
+        postfix = Audio(ns.postfix)
     print(f'  - fading out over {ns.t} seconds', file=stderr, flush=True)
     import umdone.basic_filters
     audio_out = umdone.basic_filters.cross_fade(audio_in, postfix, t=ns.t, base=ns.base)
