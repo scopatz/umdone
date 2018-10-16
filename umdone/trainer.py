@@ -37,6 +37,8 @@ class TrainerModel(object):
     default_settings = {'device': None, 'current_segments': {}}
 
     def __init__(self, audio, window_length=0.05, threshold=0.01, n_mfcc=13, device=-1):
+        self.audio = audio if isinstance(audio, sound.Audio) else \
+                     sound.Audio.from_hash_or_init(audio)
         # settings
         self.load_settings()
         self.window_length = window_length
@@ -49,8 +51,6 @@ class TrainerModel(object):
         self._output_devices = None
 
         # data
-        self.audio = audio if isinstance(audio, sound.Audio) else \
-                     sound.Audio.from_hash_or_init(audio)
         self.raw, self.sr = self.audio.data, self.audio.sr
         bounds = segment.boundaries(self.raw, self.sr, window_length=window_length,
                                     threshold=threshold)
@@ -429,7 +429,7 @@ class TrainerDisplay(object):
 
     def main(self):
         self.loop = urwid.MainLoop(self.view, self.view.palette, pop_ups=True)
-        self.loop.set_alarm_in(0.001, lambda w, d: self.select_segment(0))
+        self.loop.set_alarm_in(0.001, lambda w, d: self.select_segment(self.model.current_segment))
         self.loop.run()
 
 
