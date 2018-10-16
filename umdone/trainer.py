@@ -114,7 +114,7 @@ class TrainerModel(object):
         umdone.io.save(outfile, self.mfccs, cats, distances=self.distances)
         self.reset_data()
 
-    def reset_data(self)
+    def reset_data(self):
         self.categories.clear()
         del self.mfccs, self.distances
 
