@@ -406,7 +406,7 @@ class TrainerDisplay(object):
         s += offset
         self.select_segment(s)
 
-    def save(self):
+    def _save(self):
         model = self.model
         view = self.view
         view.status.set_text('\nComputing MFCCs\n')
@@ -418,6 +418,14 @@ class TrainerDisplay(object):
         view.status.set_text('\nSaving settings\n')
         model.save_settings()
         view.status.set_text('\nSaved\n')
+        view.update_progress()
+
+    def save(self):
+        try:
+            self._save()
+        except Exception as e:
+            self.view.status.set_text('Error Saving: '  + str(e))
+
 
     def main(self):
         self.loop = urwid.MainLoop(self.view, self.view.palette, pop_ups=True)
