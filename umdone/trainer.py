@@ -34,7 +34,7 @@ class TrainerModel(object):
         (3, 'non-word          (discard)'),
         )
 
-    default_settings = {'device': None}
+    default_settings = {'device': None, 'current_segments': {}}
 
     def __init__(self, audio, window_length=0.05, threshold=0.01, n_mfcc=13, device=-1):
         # settings
@@ -49,7 +49,6 @@ class TrainerModel(object):
         self._output_devices = None
 
         # data
-        self.current_segment = 0
         self.audio = audio if isinstance(audio, sound.Audio) else \
                      sound.Audio.from_hash_or_init(audio)
         self.raw, self.sr = self.audio.data, self.audio.sr
@@ -75,6 +74,14 @@ class TrainerModel(object):
                 if d.get('max_output_channels', 0) > 0}
         self._output_devices = outs
         return outs
+
+    @property
+    def current_segment(self):
+        return self.current_segments.get(self.audio.hash(), 0)
+
+    @current_segment.setter
+    def current_segment(self, value):
+        self.current_segments[self.audio.hash()] = value
 
     def segement_order(self):
         return sorted(self.categories.keys())
@@ -105,9 +112,15 @@ class TrainerModel(object):
         order = self.segement_order()
         cats = [self.categories[seg] for seg in order]
         umdone.io.save(outfile, self.mfccs, cats, distances=self.distances)
+        self.reset_data()
+
+    def reset_data(self)
+        self.categories.clear()
+        del self.mfccs, self.distances
 
     def save_settings(self):
-        settings = {'device': self.device}
+        settings = {'device': self.device,
+                    'current_segments': self.current_segments}
         with open(TRAINER_SETTINGS_FILE, 'w') as f:
             json.dump(settings, f)
 
@@ -118,6 +131,7 @@ class TrainerModel(object):
         else:
             settings = self.default_settings
         self.device = settings.get('device', None)
+        self.current_segments = settings.get('current_segments', {})
 
 
 class SoundDevicePopUpDialog(urwid.PopUpTarget):
@@ -290,6 +304,10 @@ class TrainerView(urwid.WidgetWrap, urwid.PopUpLauncher):
         else:
             return urwid.ProgressBar('pg normal', 'pg complete', 0, done)
 
+    def save_progress(self, w):
+        # save and dont exit
+        self.controller.save()
+
     def save_and_exit_program(self, w):
         # replace progress bar
         self.progress = self.progress_bar(done=1.0)
@@ -328,6 +346,7 @@ class TrainerView(urwid.WidgetWrap, urwid.PopUpLauncher):
               self.progress_wrap,
               urwid.Divider(),
               urwid.AttrWrap(SoundDevicePopUp(self), 'button normal', 'button select'),
+              self.button("Save progess", self.save_progress),
               self.button("Save and quit", self.save_and_exit_program),
               self.button("Quit without saving", self.exit_program),
               ]
@@ -394,8 +413,11 @@ class TrainerDisplay(object):
         model.compute_mfccs(view.progress.set_completion)
         view.status.set_text('\nComputing distance matrix\n')
         model.compute_distances(self.dbfile, view.progress.set_completion)
-        view.status.set_text('\nSaving\n')
+        view.status.set_text('\nSaving data\n')
         model.save(self.dbfile)
+        view.status.set_text('\nSaving settings\n')
+        model.save_settings()
+        view.status.set_text('\nSaved\n')
 
     def main(self):
         self.loop = urwid.MainLoop(self.view, self.view.palette, pop_ups=True)
