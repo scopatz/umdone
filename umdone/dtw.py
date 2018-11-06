@@ -1,6 +1,6 @@
 """Dynamic Time Warping (DTW) module.
 
-`Please see this presentation from UIUC for an explanation. 
+`Please see this presentation from UIUC for an explanation.
 <http://luthuli.cs.uiuc.edu/~daf/courses/CS-498-DAF-PS/Lecture%2018%20-%20Time%20series,%20DTW.pdf>`_
 
 Thanks to the dtw module for inspiration: https://github.com/pierre-rouanet/dtw
@@ -138,7 +138,7 @@ def dtw(x, y, dist_func=l1):
 def distance_matrix(mfccs, callback=None):
     """Computes a distance matrix from a list mfccs"""
     n = len(mfccs)
-    stat_numer = 0
+    stat_numer = 0.0
     stat_denom = (n**2) / 2
     dists = np.empty((n, n), 'f8')
     for i in range(n):
@@ -146,6 +146,6 @@ def distance_matrix(mfccs, callback=None):
             # this matrix is symmetric by def.
             dists[i,j] = dists[j,i] = distance(mfccs[i], mfccs[j])
             if callback is not None:
-                stat_numer += 1
+                stat_numer += 1.0
                 callback(stat_numer / stat_denom)
     return dists

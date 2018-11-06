@@ -410,19 +410,29 @@ class TrainerDisplay(object):
         model = self.model
         view = self.view
         loop = self.loop
+        # MFCCs
         view.status.set_text('\nComputing MFCCs\n')
-        def _mfcc_callback(frac):
+        def mfcc_callback(frac):
             view.status.set_text('\nComputing MFCCs: {:.1%}\n'.format(frac))
             loop.draw_screen()
-        _mfcc_callback(0.0)
-        model.compute_mfccs(callback=_mfcc_callback)
+        mfcc_callback(0.0)
+        model.compute_mfccs(callback=mfcc_callback)
+        # Distance Matrix
         view.status.set_text('\nComputing distance matrix\n')
-        model.compute_distances(self.dbfile, view.progress.set_completion)
+        def dist_callback(frac):
+            view.status.set_text('\nComputing distance matrix: {:.1%}\n'.format(frac))
+            loop.draw_screen()
+        dist_callback(0.0)
+        model.compute_distances(self.dbfile, callback=dist_callback)
+        # save
         view.status.set_text('\nSaving data\n')
+        loop.draw_screen()
         model.save(self.dbfile)
         view.status.set_text('\nSaving settings\n')
+        loop.draw_screen()
         model.save_settings()
         view.status.set_text('\nSaved\n')
+        loop.draw_screen()
         view.update_progress()
 
     def save(self):
@@ -430,7 +440,6 @@ class TrainerDisplay(object):
             self._save()
         except Exception as e:
             self.view.status.set_text('Error Saving: '  + str(e))
-
 
     def main(self):
         self.loop = urwid.MainLoop(self.view, self.view.palette, pop_ups=True)
