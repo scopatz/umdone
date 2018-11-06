@@ -93,12 +93,12 @@ class TrainerModel(object):
         self.mfccs = mfccs = []
         order = self.segement_order()
         for status, seg in enumerate(order, start=1):
+            if callback is not None:
+                callback(float(status)/n)
             l, u = self.bounds[seg]
             clip = self.raw[l:u]
             mfcc = librosa.feature.mfcc(clip, sr, n_mfcc=n_mfcc).T
             mfccs.append(mfcc)
-            if callback is not None:
-                callback(status/n)
         return mfccs
 
     def compute_distances(self, outfile, callback=None):
@@ -409,8 +409,13 @@ class TrainerDisplay(object):
     def _save(self):
         model = self.model
         view = self.view
+        loop = self.loop
         view.status.set_text('\nComputing MFCCs\n')
-        model.compute_mfccs(view.progress.set_completion)
+        def _mfcc_callback(frac):
+            view.status.set_text('\nComputing MFCCs: {:.1%}\n'.format(frac))
+            loop.draw_screen()
+        _mfcc_callback(0.0)
+        model.compute_mfccs(callback=_mfcc_callback)
         view.status.set_text('\nComputing distance matrix\n')
         model.compute_distances(self.dbfile, view.progress.set_completion)
         view.status.set_text('\nSaving data\n')
