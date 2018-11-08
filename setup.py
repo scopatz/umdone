@@ -39,7 +39,7 @@ def main():
         )
     if HAVE_SETUPTOOLS:
         skw['setup_requires'] = []
-        skw['install_requires'] = ['numpy', 'librosa', 'xonsh']
+        skw['install_requires'] = ['numpy', 'librosa', 'xonsh', 'lazyasd']
     setup(**skw)
 
 
