@@ -22,6 +22,9 @@ def match(x, sr, bounds, mfccs, distances, categories):
     n_mfcc = mfccs[0].shape[1]
     d = np.empty((len(bounds), len(distances)), 'f8')
     for i, (l, u) in enumerate(bounds):
+        if (u - l) < 100:
+            # make sure the clip has real size
+            continue
         clip = x[l:u]
         clip_mfcc = librosa.feature.mfcc(clip, sr, n_mfcc=n_mfcc).T
         for j, mfcc in enumerate(mfccs):
