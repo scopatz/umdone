@@ -22,6 +22,7 @@ from umdone.tools import UMDONE_CONFIG_DIR
 
 class BaseAppModel(object):
 
+    bounds = None
     max_val = 1
     min_val = -1
     valid_categories = (
@@ -32,7 +33,8 @@ class BaseAppModel(object):
     default_settings = {'device': None, 'current_segments': {}}
     settings_file = os.path.join(UMDONE_CONFIG_DIR, 'baseapp.json')
 
-    def __init__(self, audio, window_length=0.05, threshold=0.01, device=-1):
+    def __init__(self, audio, window_length=0.05, threshold=0.01, device=-1, dbfile=None):
+        self.dbfile = dbfile
         self.audio = audio if isinstance(audio, sound.Audio) else \
                      sound.Audio.from_hash_or_init(audio)
         # settings
@@ -47,9 +49,10 @@ class BaseAppModel(object):
 
         # data
         self.raw, self.sr = self.audio.data, self.audio.sr
-        bounds = segment.boundaries(self.raw, self.sr, window_length=window_length,
-                                    threshold=threshold)
-        self.bounds = bounds[bounds[:,0] < bounds[:,1]]
+        if self.bounds is None:
+            bounds = segment.boundaries(self.raw, self.sr, window_length=window_length,
+                                        threshold=threshold)
+            self.bounds = bounds[bounds[:,0] < bounds[:,1]]
         self.nsegments = len(self.bounds)
         self.runtime = len(self.raw) / self.sr
 
@@ -81,7 +84,7 @@ class BaseAppModel(object):
     def segement_order(self):
         return sorted(self.categories.keys())
 
-    def save(self, outfile):
+    def save(self):
         raise NotImplementedError('need concrete class to save')
 
     def save_settings(self):

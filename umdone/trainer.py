@@ -61,10 +61,10 @@ class TrainerModel(BaseAppModel):
         self.distances = dtw.distance_matrix(mfccs, callback=callback)
         return self.distances
 
-    def save(self, outfile):
+    def save(self):
         order = self.segement_order()
         cats = [self.categories[seg] for seg in order]
-        umdone.io.save(outfile, self.mfccs, cats, distances=self.distances)
+        umdone.io.save_mfccs(self.dbfile, self.mfccs, cats, distances=self.distances)
         self.reset_data()
 
     def reset_data(self):
@@ -97,7 +97,7 @@ class TrainerDisplay(BaseAppDisplay):
         # save
         view.status.set_text('\nSaving data\n')
         loop.draw_screen()
-        model.save(self.dbfile)
+        model.save()
         view.status.set_text('\nSaving settings\n')
         loop.draw_screen()
         model.save_settings()
