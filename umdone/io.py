@@ -100,7 +100,7 @@ def load_mfccs(fnames):
     return mfccs, dists, cats
 
 
-def save_clips(fname, raw, bounds, mask):
+def save_clips(fname, raw, bounds, mask, start_from=0):
     """Saves clips data to a file.
 
     Parameters
@@ -115,7 +115,7 @@ def save_clips(fname, raw, bounds, mask):
     mask = np.asarray(mask)
     # save data
     if os.path.isfile(fname):
-        _save_clips_append(fname, raw, bounds, mask)
+        _save_clips_append(fname, raw, bounds, mask, start_from)
     else:
         _save_clips_new(fname, raw, bounds, mask)
 
@@ -127,9 +127,15 @@ def _save_clips_new(fname, raw, bounds, mask):
         f.create_earray("/", "mask", shape=(0,), obj=mask)
 
 
-def _save_clips_append(fname, raw, bounds, mask):
+def _save_clips_append(fname, raw, bounds, mask, start_from):
     with tb.open_file(fname, "a") as f:
-        f.root.mask.append(mask)
+        len_exist = len(f.root.mask)
+        offset = len_exist - start_from
+        if offset <= 0:
+            f.root.mask.append(mask)
+        else:
+            f.root.mask[-offset:] = mask[:offset]
+            f.root.mask.append(mask[offset:])
 
 
 def load_clips_file(fname, raw=True, bounds=True, mask=True):

@@ -37,7 +37,7 @@ class ClipperModel(BaseAppModel):
         order = self.segement_order()
         cats = [self.categories[seg] for seg in order]
         mask = np.array(cats, dtype=bool)
-        umdone.io.save_clips(self.dbfile, self.raw, self.bounds, mask)
+        umdone.io.save_clips(self.dbfile, self.raw, self.bounds, mask, start_from=order[0])
         self.reset_data()
 
     def reset_data(self):
