@@ -344,7 +344,7 @@ class BaseAppDisplay(object):
 
     def __init__(self, audio, dbfile, window_length=0.05, noise_threshold=0.01,
                  device=-1, **kwargs):
-        self.model = self.modelcls(audio, window_length=window_length,
+        self.model = self.modelcls(audio, dbfile=dbfile, window_length=window_length,
                                   threshold=noise_threshold, **kwargs)
         self.dbfile = dbfile
         self.view = BaseAppView(self)

@@ -122,8 +122,8 @@ def save_clips(fname, raw, bounds, categories):
 
 def _save_clips_new(fname, raw, bounds, categories):
     with tb.open_file(fname, 'a') as f:
-        f.create_array('/', 'raw'), obj=raw)
-        f.create_array('/', 'bounds'), obj=bounds)
+        f.create_array('/', 'raw', obj=raw)
+        f.create_array('/', 'bounds', obj=bounds)
         f.create_earray('/', 'categories', shape=(0,), obj=categories)
 
 
@@ -145,7 +145,7 @@ def load_clips(fnames, raw=True, bounds=True, categories=True):
     if isinstance(fnames, str):
         return load_clips_file(fnames, raw=raw, bounds=bounds, categories=categories)
     raws = []
-    bnds []
+    bnds = []
     cats = []
     for fname in fnames:
         r, b, c = load_clips_file(fname, raw=raw, bounds=bounds, categories=categories)

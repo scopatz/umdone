@@ -8,7 +8,7 @@ from lazyasd import lazyobject
 from xonsh.tools import print_color, unthreadable
 
 from umdone import cli
-from umdone.sound import Audio, LABEL_CACHE_DIR
+from umdone.sound import Audio, CLIPS_CACHE_DIR
 from umdone.commands import audio_in
 
 
@@ -35,7 +35,7 @@ def main(ain, args, stdin=None, stdout=None, stderr=None, spec=None):
     if ns.dbfile is None:
         prefix = ain.hash() if ns.infile is None else \
                  os.path.splitext(os.path.basename(ns.infile))[0]
-        ns.dbfile = os.path.join(LABEL_CACHE_DIR, prefix + '-clips.h5')
+        ns.dbfile = os.path.join(CLIPS_CACHE_DIR, prefix + '-clips.h5')
     print_color('{YELLOW}Marking clips {GREEN}' + str(ain) + '{NO_COLOR}',
                 file=stderr, flush=True)
     from umdone.clipper import ClipperDisplay
