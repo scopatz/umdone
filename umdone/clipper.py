@@ -29,7 +29,7 @@ class ClipperModel(BaseAppModel):
     def __init__(self, audio, dbfile=None, **kwargs):
         if dbfile is not None and os.path.isfile(dbfile):
             _, self.bounds, _ = umdone.io.load_clips(
-                dbfile, raw=False, categories=False
+                dbfile, raw=False, mask=False
             )
         super().__init__(audio, dbfile=dbfile, **kwargs)
 
