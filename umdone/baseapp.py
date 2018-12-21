@@ -368,6 +368,7 @@ class BaseAppView(urwid.WidgetWrap, urwid.PopUpLauncher):
 class BaseAppDisplay(object):
 
     modelcls = BaseAppModel
+    auto_save = False
 
     def __init__(
         self,
@@ -406,6 +407,8 @@ class BaseAppDisplay(object):
             s = 0
         elif s >= self.model.nsegments:
             s = self.model.nsegments - 1
+        elif self.auto_save and s % int(self.model.nsegments/100) == 0:
+            self.save()
         self.model.current_segment = s
         clip = self.model.clip
         self.view.update_segment()

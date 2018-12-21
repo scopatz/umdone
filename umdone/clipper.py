@@ -47,6 +47,7 @@ class ClipperModel(BaseAppModel):
 class ClipperDisplay(BaseAppDisplay):
 
     modelcls = ClipperModel
+    auto_save = True
 
     def _save(self):
         model = self.model
