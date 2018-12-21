@@ -12,7 +12,7 @@ def match(x, sr, bounds, mfccs, distances, categories):
     """
     # data setup
     n_mfcc = mfccs[0].shape[1]
-    d = np.empty((len(bounds), len(distances)), 'f8')
+    d = np.empty((len(bounds), len(distances)), "f8")
     for i, (l, u) in enumerate(bounds):
         clip = x[l:u]
         clip_mfcc = librosa.feature.mfcc(clip, sr, n_mfcc=n_mfcc).T
@@ -26,4 +26,3 @@ def match(x, sr, bounds, mfccs, distances, categories):
     # ie umm/like/etc = 2 and non-words = 3
     matches = bounds[results > 1]
     return matches
-

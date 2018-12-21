@@ -12,15 +12,18 @@ from umdone.commands import audio_io
 
 @lazyobject
 def PARSER():
-    parser = ArgumentParser('reduce-noise')
-    parser.add_argument('path',
-                        help='path to local file or URL.',
-                        nargs="?",
-                        default=None,)
-    parser.add_argument('--no-norm', '--dont-norm', dest='norm',
-                        action='store_false', default=True,
-                        help="don't normalize output."
-                        )
+    parser = ArgumentParser("reduce-noise")
+    parser.add_argument(
+        "path", help="path to local file or URL.", nargs="?", default=None
+    )
+    parser.add_argument(
+        "--no-norm",
+        "--dont-norm",
+        dest="norm",
+        action="store_false",
+        default=True,
+        help="don't normalize output.",
+    )
     return parser
 
 
@@ -30,9 +33,10 @@ def main(audio_in, args, stdin=None, stdout=None, stderr=None, spec=None):
     ns = PARSER.parse_args(args)
     if audio_in is None and ns.path is not None:
         audio_in = Audio(ns.path)
-    print_color('{YELLOW}Reducing noise{NO_COLOR}', file=stderr, flush=True)
-    print('  - audio in:', audio_in, file=stderr, flush=True)
+    print_color("{YELLOW}Reducing noise{NO_COLOR}", file=stderr, flush=True)
+    print("  - audio in:", audio_in, file=stderr, flush=True)
     import umdone.basic_filters
+
     audio_out = umdone.basic_filters.reduce_noise(audio_in, norm=ns.norm)
-    print('  - audio out:', audio_out, file=stderr, flush=True)
+    print("  - audio out:", audio_out, file=stderr, flush=True)
     return audio_out

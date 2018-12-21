@@ -37,27 +37,27 @@ def save_mfccs(fname, mfccs, categories, distances=None):
 def _save_mfccs_new(fname, mfccs, flat_mfccs, categories, distances, lengths):
     if distances is None:
         distances = dtw.distance_matrix(mfccs)
-    with tb.open_file(fname, 'a') as f:
-        f.create_earray('/', 'categories', shape=(0,), obj=categories)
-        f.create_earray('/', 'mfcc_lengths', shape=(0,), obj=lengths)
-        f.create_earray('/', 'mfccs', shape=(0, flat_mfccs.shape[1]), obj=flat_mfccs)
-        f.create_array('/', 'distances', obj=distances)  # not extendable!
+    with tb.open_file(fname, "a") as f:
+        f.create_earray("/", "categories", shape=(0,), obj=categories)
+        f.create_earray("/", "mfcc_lengths", shape=(0,), obj=lengths)
+        f.create_earray("/", "mfccs", shape=(0, flat_mfccs.shape[1]), obj=flat_mfccs)
+        f.create_array("/", "distances", obj=distances)  # not extendable!
 
 
 def _save_mfccs_append(fname, mfccs, flat_mfccs, categories, distances, lengths):
     if distances is None:
         mfccs = _load_mfccs(fname) + mfccs
         distances = dtw.distance_matrix(mfccs)
-    with tb.open_file(fname, 'a') as f:
+    with tb.open_file(fname, "a") as f:
         f.root.categories.append(categories)
         f.root.mfcc_lengths.append(lengths)
         f.root.mfccs.append(flat_mfccs)
-        f.remove_node('/', 'distances')
-        f.create_array('/', 'distances', obj=distances)  # not extendable!
+        f.remove_node("/", "distances")
+        f.create_array("/", "distances", obj=distances)  # not extendable!
 
 
 def _load_mfccs(fname):
-    with tb.open_file(fname, 'r') as f:
+    with tb.open_file(fname, "r") as f:
         lens = f.root.mfcc_lengths[:]
         flat_mfccs = f.root.mfccs[:]
     return _unflatten_mfccs(flat_mfccs, lens)
@@ -74,7 +74,7 @@ def _unflatten_mfccs(flat_mfccs, lens):
 
 
 def load_mfccs_file(fname):
-    with tb.open_file(fname, 'r') as f:
+    with tb.open_file(fname, "r") as f:
         dists = f.root.distances[:]
         cats = f.root.categories[:]
         lens = f.root.mfcc_lengths[:]
@@ -121,19 +121,19 @@ def save_clips(fname, raw, bounds, categories):
 
 
 def _save_clips_new(fname, raw, bounds, categories):
-    with tb.open_file(fname, 'a') as f:
-        f.create_array('/', 'raw', obj=raw)
-        f.create_array('/', 'bounds', obj=bounds)
-        f.create_earray('/', 'categories', shape=(0,), obj=categories)
+    with tb.open_file(fname, "a") as f:
+        f.create_array("/", "raw", obj=raw)
+        f.create_array("/", "bounds", obj=bounds)
+        f.create_earray("/", "categories", shape=(0,), obj=categories)
 
 
 def _save_clips_append(fname, raw, bounds, categories):
-    with tb.open_file(fname, 'a') as f:
+    with tb.open_file(fname, "a") as f:
         f.root.categories.append(categories)
 
 
 def load_clips_file(fname, raw=True, bounds=True, categories=True):
-    with tb.open_file(fname, 'r') as f:
+    with tb.open_file(fname, "r") as f:
         r = f.root.raw[:] if raw else None
         b = f.root.bounds[:] if bounds else None
         c = f.root.categories[:] if categories else None

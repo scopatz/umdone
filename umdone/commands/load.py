@@ -12,8 +12,8 @@ from umdone.commands import audio_out
 
 @lazyobject
 def PARSER():
-    parser = ArgumentParser('load')
-    parser.add_argument('path', help='path to local file or URL.')
+    parser = ArgumentParser("load")
+    parser.add_argument("path", help="path to local file or URL.")
     return parser
 
 
@@ -21,8 +21,9 @@ def PARSER():
 def main(args, stdin=None, stdout=None, stderr=None, spec=None):
     """Loads an audio file"""
     ns = PARSER.parse_args(args)
-    print_color('{YELLOW}Loading {GREEN}' + ns.path + '{NO_COLOR}',
-                file=sys.stderr, flush=True)
+    print_color(
+        "{YELLOW}Loading {GREEN}" + ns.path + "{NO_COLOR}", file=sys.stderr, flush=True
+    )
     rtn = Audio(ns.path)
-    print('  - loaded', rtn, file=sys.stderr)
+    print("  - loaded", rtn, file=sys.stderr)
     return rtn

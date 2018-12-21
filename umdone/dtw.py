@@ -35,17 +35,17 @@ def cost_matrix(x, y, dist_func=l1):
     y = np.atleast_2d(y)
     n2 = len(y)
 
-    cost = np.empty((n1+1, n2+1), dtype=float)
+    cost = np.empty((n1 + 1, n2 + 1), dtype=float)
     cost[0, 1:] = np.inf
     cost[1:, 0] = np.inf
 
     for i in range(n1):
         for j in range(n2):
-            cost[i+1, j+1] = dist_func(x[i], y[j])
+            cost[i + 1, j + 1] = dist_func(x[i], y[j])
 
     for i in range(n1):
         for j in range(n2):
-            cost[i+1, j+1] += min(cost[i, j], cost[i, j+1], cost[i+1, j])
+            cost[i + 1, j + 1] += min(cost[i, j], cost[i, j + 1], cost[i + 1, j])
 
     cost = cost[1:, 1:]
     return cost
@@ -92,14 +92,14 @@ def warp_path(cost):
     """
     i, j = cost.shape[0] - 1, cost.shape[1] - 1
     p, q = [i], [j]
-    while (i > 0 and j > 0):
-        prev = np.argmin((cost[i-1, j-1], cost[i-1, j], cost[i, j-1]))
-        if (prev == 0):
+    while i > 0 and j > 0:
+        prev = np.argmin((cost[i - 1, j - 1], cost[i - 1, j], cost[i, j - 1]))
+        if prev == 0:
             i -= 1
             j -= 1
-        elif (prev == 1):
+        elif prev == 1:
             i -= 1
-        elif (prev == 2):
+        elif prev == 2:
             j -= 1
         p.append(i)
         q.append(j)
@@ -139,12 +139,12 @@ def distance_matrix(mfccs, callback=None):
     """Computes a distance matrix from a list mfccs"""
     n = len(mfccs)
     stat_numer = 0.0
-    stat_denom = (n**2) / 2
-    dists = np.empty((n, n), 'f8')
+    stat_denom = (n ** 2) / 2
+    dists = np.empty((n, n), "f8")
     for i in range(n):
         for j in range(i, n):
             # this matrix is symmetric by def.
-            dists[i,j] = dists[j,i] = distance(mfccs[i], mfccs[j])
+            dists[i, j] = dists[j, i] = distance(mfccs[i], mfccs[j])
             if callback is not None:
                 stat_numer += 1.0
                 callback(stat_numer / stat_denom)

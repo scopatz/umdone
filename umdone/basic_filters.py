@@ -15,14 +15,15 @@ def complement_intervals(intervals, size=None):
     """Returns and interval array (2d ndarray) of all intervals
     complementing the input interval array
     """
-    inner = np.concatenate([intervals[:-1,1, np.newaxis],
-                            intervals[1:,0,np.newaxis]], axis=1)
+    inner = np.concatenate(
+        [intervals[:-1, 1, np.newaxis], intervals[1:, 0, np.newaxis]], axis=1
+    )
     total = []
-    if intervals[0,0] != 0:
-        total.append([[0, intervals[0,0]]])
+    if intervals[0, 0] != 0:
+        total.append([[0, intervals[0, 0]]])
     total.append(inner)
-    if size is not None and intervals[-1,1] != size:
-        total.append([[intervals[-1,1], size]])
+    if size is not None and intervals[-1, 1] != size:
+        total.append([[intervals[-1, 1], size]])
     if len(total) > 1:
         comp = np.concatenate(total)
     else:
@@ -34,7 +35,7 @@ def intervals_to_mask(intervals, size):
     """Returns numpy boolean mask from intervals array."""
     mask = np.zeros(size, bool)
     for start, end in intervals:
-        mask[start:end+1] = True
+        mask[start : end + 1] = True
     return mask
 
 
@@ -43,12 +44,11 @@ def _reduce_noise(noisy, sr=None, norm=True):
     noisy = Audio.from_hash_or_init(noisy, sr=sr)
     sr = noisy.sr
     non_silent_intervals = librosa.effects.split(noisy.data)
-    silent_intervals = complement_intervals(non_silent_intervals,
-                                            size=len(noisy.data))
+    silent_intervals = complement_intervals(non_silent_intervals, size=len(noisy.data))
     mask = intervals_to_mask(silent_intervals, len(noisy.data))
     D_silent = librosa.stft(noisy.data[mask])
     D_noisy = librosa.stft(noisy.data)
-    D_nr = -np.max(D_silent, axis=1)[:,np.newaxis] + D_noisy
+    D_nr = -np.max(D_silent, axis=1)[:, np.newaxis] + D_noisy
     nr = librosa.core.istft(D_nr)
     if norm and np.issubdtype(nr.dtype, np.floating):
         nr = librosa.util.normalize(nr, norm=np.inf, axis=None)
@@ -85,10 +85,11 @@ def _remove_silence(inp, sr=None, reduce_to=0.0):
     inp = Audio.from_hash_or_init(inp, sr=sr)
     sr = inp.sr
     non_silent_intervals = librosa.effects.split(inp.data)
-    silent_intervals = complement_intervals(non_silent_intervals,
-                                            size=len(inp.data))
+    silent_intervals = complement_intervals(non_silent_intervals, size=len(inp.data))
     reduce_to_samp = int(reduce_to * sr)
-    long_silences_mask = (silent_intervals[:,1] - silent_intervals[:,0]) > reduce_to_samp
+    long_silences_mask = (
+        silent_intervals[:, 1] - silent_intervals[:, 0]
+    ) > reduce_to_samp
     long_silences = silent_intervals[long_silences_mask]
     keep_intervals = complement_intervals(long_silences, size=len(inp.data))
     mask = intervals_to_mask(keep_intervals, len(inp.data))
@@ -121,17 +122,17 @@ def remove_silence(inp, reduce_to=0.0):
     return out
 
 
-def afade(n, base=10, dtype='f4'):
+def afade(n, base=10, dtype="f4"):
     """Creates a fade-in array of length-n for a given base."""
-    t = np.linspace(0.0, np.log(base+1)/np.log(base), n, dtype=dtype)
-    f = np.power(base, t)/base - (1/base)
+    t = np.linspace(0.0, np.log(base + 1) / np.log(base), n, dtype=dtype)
+    f = np.power(base, t) / base - (1 / base)
     return f
 
 
 def cross_fade_arrays(x, y, n, base=10):
     """Fades and x-array out while fading a y-array in over n points."""
     f = afade(n, base=base, dtype=x.dtype)
-    out = np.concatenate([x[:-n], x[-n:]*f[::-1] + y[:n]*f ,y[n:]])
+    out = np.concatenate([x[:-n], x[-n:] * f[::-1] + y[:n] * f, y[n:]])
     return out
 
 
@@ -139,7 +140,7 @@ def cross_fade_arrays(x, y, n, base=10):
 def _cross_fade(a, b, sr=None, t=3.0, base=10):
     a = Audio.from_hash_or_init(a, sr=sr)
     b = Audio.from_hash_or_init(b, sr=sr)
-    assert a.sr == b.sr, 'sample rates must be equal to cross-fade'
+    assert a.sr == b.sr, "sample rates must be equal to cross-fade"
     sr = a.sr
     n = int(t * sr)
     z = cross_fade_arrays(a.data, b.data, n, base=base)

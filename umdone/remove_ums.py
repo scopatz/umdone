@@ -20,7 +20,7 @@ def match(x, sr, bounds, mfccs, distances, categories):
     """
     # data setup
     n_mfcc = mfccs[0].shape[1]
-    d = np.empty((len(bounds), len(distances)), 'f8')
+    d = np.empty((len(bounds), len(distances)), "f8")
     for i, (l, u) in enumerate(bounds):
         if (u - l) < 100:
             # make sure the clip has real size
@@ -39,10 +39,13 @@ def match(x, sr, bounds, mfccs, distances, categories):
     return matches
 
 
-def _remove_umms(audio, mfccs, distances, categories, window_length=0.05, noise_threshold=0.01):
+def _remove_umms(
+    audio, mfccs, distances, categories, window_length=0.05, noise_threshold=0.01
+):
     x, sr = audio.data, audio.sr
-    bounds = segment.boundaries(x, sr, window_length=window_length,
-                                threshold=noise_threshold)
+    bounds = segment.boundaries(
+        x, sr, window_length=window_length, threshold=noise_threshold
+    )
     matches = match(x, sr, bounds, mfccs, distances, categories)
     y = segment.remove_slices(x.T, matches)
     out = Audio(y, sr)
@@ -50,16 +53,31 @@ def _remove_umms(audio, mfccs, distances, categories, window_length=0.05, noise_
 
 
 @cache
-def _remove_umms_cacheable(audio_hash, dbfiles, window_length=0.05, noise_threshold=0.01):
+def _remove_umms_cacheable(
+    audio_hash, dbfiles, window_length=0.05, noise_threshold=0.01
+):
     audio = Audio.from_hash(audio_hash)
     mfccs, distances, categories = umdone.io.load(dbfiles)
-    out = _remove_umms(audio, mfccs, distances, categories,
-                       window_length=window_length, noise_threshold=noise_threshold)
+    out = _remove_umms(
+        audio,
+        mfccs,
+        distances,
+        categories,
+        window_length=window_length,
+        noise_threshold=noise_threshold,
+    )
     return out.hash_str()
 
 
-def remove_umms(audio, dbfiles=None, mfccs=None, distances=None, categories=None,
-                window_length=0.05, noise_threshold=0.01):
+def remove_umms(
+    audio,
+    dbfiles=None,
+    mfccs=None,
+    distances=None,
+    categories=None,
+    window_length=0.05,
+    noise_threshold=0.01,
+):
     """Filters out umms and other unwanted clips from audio using support vector
     classification.
 
@@ -92,15 +110,26 @@ def remove_umms(audio, dbfiles=None, mfccs=None, distances=None, categories=None
     # figure out which command to call.
     if dbfiles is not None:
         # yes, we are in a cacheable situation
-        out_hash = _remove_umms_cacheable(audio.hash_str(), dbfiles,
-                                          window_length=window_length,
-                                          noise_threshold=noise_threshold)
+        out_hash = _remove_umms_cacheable(
+            audio.hash_str(),
+            dbfiles,
+            window_length=window_length,
+            noise_threshold=noise_threshold,
+        )
         out = Audio.from_hash(out_hash)
     elif mfccs is not None and distances is not None and categories is not None:
         # just do the comuptation
-        out = _remove_umms(audio, mfccs, distances, categories,
-                           window_length=window_length, noise_threshold=noise_threshold)
+        out = _remove_umms(
+            audio,
+            mfccs,
+            distances,
+            categories,
+            window_length=window_length,
+            noise_threshold=noise_threshold,
+        )
     else:
-        raise ValueError('either dbfiles must not be None, or mfccs, distances, '
-                         'and categories must all not be None')
+        raise ValueError(
+            "either dbfiles must not be None, or mfccs, distances, "
+            "and categories must all not be None"
+        )
     return out
