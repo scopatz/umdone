@@ -7,6 +7,7 @@ import librosa.core
 import librosa.util
 import librosa.effects
 
+from umdone.io import load_clips_file
 from umdone.tools import cache
 from umdone.sound import Audio
 
@@ -119,6 +120,63 @@ def remove_silence(inp, reduce_to=0.0):
         inp = inp.hash_str()
     out = _remove_silence(inp, reduce_to=reduce_to)
     out = Audio.from_hash(out)
+    return out
+
+
+def _remove_marked_clips(inp, bounds, mask):
+    # does the real work
+    keepers = np.ones(inp.data.shape[0], dtype=bool)
+    bad_bounds = bounds[~mask]
+    for start, end in bad_bounds:
+        keepers[start:end+1] = False
+    out = Audio(inp.data[keepers], sr=inp.sr)
+    return out
+
+
+@cache
+def _remove_marked_clips_cached(inp, sr, dbfile):
+    # cache-safe version
+    inp = Audio.from_hash_or_init(inp, sr=sr)
+    _, bounds, mask = load_clips_file(dbfile)
+    out = _remove_marked_clips(inp, bounds, mask)
+    return out.hash_str()
+
+
+def remove_marked_clips(inp, bounds=None, mask=None, dbfile=None):
+    """Removes marked clips from audio.
+
+    Parameters
+    ----------
+    inp : str or Audio
+        Input audio. If this is a string, it will be read in from
+        a file. If this is an Audio instance, it will be used directly.
+    bounds : 2D array of intervals or None, optional
+        Represents the interval bounds where masks are given. If not None,
+        mask must also be given.
+    mask : boolean array of length of the bounds or None, optional
+        Masks the bounds, False means to discard and True means to keep.
+    dbfile : str or None, optional
+        If given, the bounds and mask are read from a database file.
+
+    Returns
+    -------
+    out : Audio
+    """
+    if dbfile is not None and bounds is None and mask is None:
+        # have dbfile, use cached version
+        sr = None
+        if isinstance(inp, Audio):
+            sr = inp.sr
+            inp = inp.hash_str()
+        out = _remove_marked_clips_cached(inp, sr, dbfile)
+        out = Audio.from_hash(out)
+    elif dbfile is None and bounds is not None and mask is not None:
+        # no db, can't use cached version
+        if isinstance(inp, str):
+            inp = Audio.from_hash_or_init(inp)
+        out = _remove_marked_clips(inp, bounds, mask)
+    else:
+        raise RuntimeError("both bounds and mask must not be None OR dbfile must not be None")
     return out
 
 

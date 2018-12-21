@@ -29,7 +29,7 @@ def PARSER():
 @unthreadable
 @audio_in
 def main(ain, args, stdin=None, stdout=None, stderr=None, spec=None):
-    """Labels audio"""
+    """Marks clip audio"""
     ns = PARSER.parse_args(args)
     if ain is None and ns.infile is not None:
         ain = Audio(ns.infile)

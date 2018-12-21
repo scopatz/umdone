@@ -100,7 +100,7 @@ def load_mfccs(fnames):
     return mfccs, dists, cats
 
 
-def save_clips(fname, raw, bounds, categories):
+def save_clips(fname, raw, bounds, mask):
     """Saves clips data to a file.
 
     Parameters
@@ -108,51 +108,51 @@ def save_clips(fname, raw, bounds, categories):
     fname : str
         Filename
     raw :
-    clips :
-    categories :
+    bounds :
+    mask :
     """
     # data prep
-    categories = np.asarray(categories)
+    mask = np.asarray(mask)
     # save data
     if os.path.isfile(fname):
-        _save_clips_append(fname, raw, bounds, categories)
+        _save_clips_append(fname, raw, bounds, mask)
     else:
-        _save_clips_new(fname, raw, bounds, categories)
+        _save_clips_new(fname, raw, bounds, mask)
 
 
-def _save_clips_new(fname, raw, bounds, categories):
+def _save_clips_new(fname, raw, bounds, mask):
     with tb.open_file(fname, "a") as f:
         f.create_array("/", "raw", obj=raw)
         f.create_array("/", "bounds", obj=bounds)
-        f.create_earray("/", "categories", shape=(0,), obj=categories)
+        f.create_earray("/", "mask", shape=(0,), obj=mask)
 
 
-def _save_clips_append(fname, raw, bounds, categories):
+def _save_clips_append(fname, raw, bounds, mask):
     with tb.open_file(fname, "a") as f:
-        f.root.categories.append(categories)
+        f.root.mask.append(mask)
 
 
-def load_clips_file(fname, raw=True, bounds=True, categories=True):
+def load_clips_file(fname, raw=True, bounds=True, mask=True):
     with tb.open_file(fname, "r") as f:
         r = f.root.raw[:] if raw else None
         b = f.root.bounds[:] if bounds else None
-        c = f.root.categories[:] if categories else None
-    return r, b, c
+        m = f.root.mask[:] if mask else None
+    return r, b, m
 
 
-def load_clips(fnames, raw=True, bounds=True, categories=True):
+def load_clips(fnames, raw=True, bounds=True, mask=True):
     """Loads one or many clips database files"""
     if isinstance(fnames, str):
-        return load_clips_file(fnames, raw=raw, bounds=bounds, categories=categories)
+        return load_clips_file(fnames, raw=raw, bounds=bounds, mask=mask)
     raws = []
     bnds = []
-    cats = []
+    msks = []
     for fname in fnames:
-        r, b, c = load_clips_file(fname, raw=raw, bounds=bounds, categories=categories)
+        r, b, m = load_clips_file(fname, raw=raw, bounds=bounds, mask=mask)
         raws.extend(r)
         bnds.append(b)
-        cats.append(c)
+        msks.append(m)
     raws = np.concatenate(raws)
     bnds = np.concatenate(bnds)
-    cats = np.concatenate(cats)
-    return raws, bnds, cats
+    msks = np.concatenate(msks)
+    return raws, bnds, msks

@@ -25,7 +25,7 @@ class BaseAppModel(object):
     bounds = None
     max_val = 1
     min_val = -1
-    valid_categories = ((0, "keep"), (1, "discard"))
+    valid_categories = ((0, "discard"), (1, "keep"))
 
     default_settings = {"device": None, "current_segments": {}}
     settings_file = os.path.join(UMDONE_CONFIG_DIR, "baseapp.json")
