@@ -42,6 +42,12 @@ def sf():
     return soundfile
 
 
+@lazyobject
+def tqdm():
+    from tqdm import tqdm as _tqdm
+    return _tqdm
+
+
 def array_to_bytes(x, sr):
     """Converts a numpy array to bytes in memory"""
     with io.BytesIO() as f:
@@ -82,7 +88,6 @@ def play(x, sr, **kwargs):
     sd.play(x, sr, **kwargs)
 
 
-@cache
 def write_m4a(filename, audio, sr=None):
     """Writes audio to an M4A file."""
     if not isinstance(audio, Audio):
@@ -93,6 +98,44 @@ def write_m4a(filename, audio, sr=None):
         f.flush()
         s = $(ffmpeg -y -i @(f.name) -strict experimental @(filename) e>o)
         print(s, file=sys.stderr)
+
+
+def write_ogg_vorbis(filename, audio, sr=None):
+    """Writes an audio or data stream to OGG VORBIS"""
+    if isinstance(audio, Audio):
+        audio = Audio.from_hash_or_init(audio, sr=sr)
+        data = audio.data
+        sr = audio.sr
+    elif isinstance(audio, np.ndarray) and sr is not None:
+        data = audio
+    else:
+        raise TypeError("audio must be Audio instance or numpy ndarray and sr "
+                        "cannot be None.")
+    size = len(data)
+    chunksize = 1048576
+    if size <= chunksize:
+        # short audio, write it directly
+        sf.write(filename, data, sr, format='OGG', subtype='VORBIS')
+        return
+    # write out chunks
+    print_color('    * writing chunks', file=sys.stderr)
+    nchunks = size // chunksize
+    if size % chunksize != 0:
+        nchunks += 1
+    files = []
+    for i in tqdm(range(nchunks)):
+        chunk = data[chunksize*i : chunksize*(i + 1)]
+        file = filename + '.' + str(i)
+        sf.write(file, chunk, sr, format='OGG', subtype='VORBIS')
+        files.append(file)
+    print_color('    * concatenating chunks', file=sys.stderr)
+    # following line from https://superuser.com/questions/864911/lossless-concatenation-of-ogg-vorbis-files/1226296
+    s = $(ffmpeg -i @("concat:" + "|".join(files)) -c copy @(filename) e>o)
+    print(s, file=sys.stderr)
+    print_color('    * removing chunk files', file=sys.stderr)
+    p = !(rm @(files) e>o)
+    if not p:
+        print(p.out, file=sys.stderr)
 
 
 @cache
@@ -214,9 +257,13 @@ class Audio:
         elif ext == '.m4a':
             write_m4a(filename, self.hash_str())
         elif ext == '.flac':
-            sf.write(filename, self.data, self.sr, format='flac', subtype='PCM_24')
+            sf.write(filename, self.data, self.sr, format='FLAC', subtype='PCM_24')
         elif ext == '.ogg':
-            sf.write(filename, self.data, self.sr, format='ogg', subtype='vorbis')
+            # Weird error prevents saving directly.
+            # See https://github.com/bastibe/SoundFile/issues/233
+            # if this is fixed, uncomment the next line:
+            #   sf.write(filename, self.data, self.sr, format='OGG', subtype='VORBIS')
+            write_ogg_vorbis(filename, self.data, self.sr)
         else:
             raise ValueError(f'audio extension {ext!r} not supported exportable format')
 
