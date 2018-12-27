@@ -92,6 +92,8 @@ def write_m4a(filename, audio, sr=None):
     """Writes audio to an M4A file."""
     if not isinstance(audio, Audio):
         audio = Audio.from_hash_or_init(audio, sr=sr)
+    if os.path.exists(filename):
+        os.remove(filename)
     # first we need to write this to a wav, then use FFMPEG to convert
     with tempfile.NamedTemporaryFile() as f:
         librosa.output.write_wav(f.name, audio.data, audio.sr)
@@ -129,6 +131,8 @@ def write_ogg_vorbis(filename, audio, sr=None):
         sf.write(file, chunk, sr, format='OGG', subtype='VORBIS')
         files.append(file)
     print_color('    * concatenating chunks', file=sys.stderr)
+    if os.path.exists(filename):
+        os.remove(filename)
     # following line from https://superuser.com/questions/864911/lossless-concatenation-of-ogg-vorbis-files/1226296
     s = $(ffmpeg -i @("concat:" + "|".join(files)) -c copy @(filename) e>o)
     print(s, file=sys.stderr)
