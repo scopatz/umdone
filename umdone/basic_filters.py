@@ -20,10 +20,10 @@ def complement_intervals(intervals, size=None):
         [intervals[:-1, 1, np.newaxis], intervals[1:, 0, np.newaxis]], axis=1
     )
     total = []
-    if intervals[0, 0] != 0:
+    if len(intervals) > 0 and intervals[0, 0] != 0:
         total.append([[0, intervals[0, 0]]])
     total.append(inner)
-    if size is not None and intervals[-1, 1] != size:
+    if size is not None and len(intervals) > 0 and intervals[-1, 1] != size:
         total.append([[intervals[-1, 1], size]])
     if len(total) > 1:
         comp = np.concatenate(total)
