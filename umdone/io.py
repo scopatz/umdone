@@ -121,8 +121,9 @@ def save_clips(fname, raw, bounds, mask, start_from=0):
 
 
 def _save_clips_new(fname, raw, bounds, mask):
+    filters = tb.Filters(complevel=9)
     with tb.open_file(fname, "a") as f:
-        f.create_array("/", "raw", obj=raw)
+        f.create_array("/", "raw", obj=raw, filters=filters)
         f.create_array("/", "bounds", obj=bounds)
         f.create_earray("/", "mask", shape=(0,), obj=mask)
 
