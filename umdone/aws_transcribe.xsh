@@ -1,6 +1,9 @@
 """Tools for transcribing audio with AWS."""
 import os
 import sys
+import json
+import time
+import uuid
 
 from xonsh.tools import print_color
 
@@ -9,7 +12,9 @@ from umdone.sound import Audio
 
 
 def aws_cache_dir():
-    return os.path.join($UMDONE_CACHE_DIR, 'aws')
+    d = os.path.join($UMDONE_CACHE_DIR, 'aws')
+    os.makedirs(d, exist_ok=True)
+    return d
 
 
 def upload_to_s3(a, bucket, filename=None):
@@ -31,13 +36,65 @@ def upload_to_s3(a, bucket, filename=None):
     return filename, s3url
 
 
+def _get_job_info(name):
+    payload = json.loads($(aws transcribe get-transcription-job --transcription-job-name @(name)))
+    info = payload["TranscriptionJob"]
+    status = info.get("TranscriptionJobStatus", "IN_PROGRESS")
+    done = status != "IN_PROGRESS"
+    return done, status, info
+
+
 @cache
 def _transcribe(a, bucket, filename=None):
     a = Audio.from_hash_or_init(a, sr=sr)
     sr = a.sr
     # first upload to S3
     filename, s3file = upload_to_s3(a, bucket, filename=filename)
-
+    # now, create a transcription job
+    job_name = a.hash() + '-' + str(uuid.uuid4())
+    job = {
+        "TranscriptionJobName": job_name,
+        "LanguageCode": "en-US",
+        "MediaSampleRateHertz": sr,
+        "MediaFormat": os.path.splitext(filename)[1:],
+        "Media": {"MediaFileUri": s3file},
+        "OutputBucketName": bucket,
+        "Settings": {
+            "ShowSpeakerLabels": False,
+            "ChannelIdentification": False
+        }
+    }
+    job_json = json.dumps(job)
+    ![aws aws transcribe start-transcription-job --cli-input-json @(job_json)]
+    # now wait for the job to be done.
+    t0 = time.monotonic()
+    job_is_done = False
+    while not job_is_done:
+        current = time.monotonic()
+        print('\rwaiting for transcription: ' + str(current - t0) + ' s',
+              flush=true, end='')
+        time.sleep(1.0)
+        job_is_done, status, info = _get_job_data(job_name)
+    print()
+    # check the job status
+    if status == "COMPLETED":
+        pass
+    elif status == "FAILED":
+        msg = "Transcription failed with the following message:\n\n"
+        msg += info.get("FailureReason", "<no message given>")
+        raise RuntimeError(msg)
+    else:
+        msg = "Transcription failed for unknown reason. Here is what I do know:\n\n"
+        msg += str(info)
+        raise RuntimeError(msg)
+    # get the transcript
+    transcript_basename = os.path.basename(info["Transcript"]["TranscriptFileUri"])
+    transcript_url = 's3://' + bucket + '/' + transcript_basename
+    transcript_filename = os.path.join(aws_cache_dir(), transcript_basename)
+    print_color('  - downloading transcript {GREEN}' + transcript_url + '{NO_COLOR} to {CYAN}' +
+                transcript_filename + '{NO_COLOR}', file=sys.stderr)
+    ![aws s3 cp @(transcript_url) @(transcript_filename)]
+    return transcript_filename
 
 
 def transcibe(a, bucket, filename=None):
@@ -53,7 +110,13 @@ def transcibe(a, bucket, filename=None):
     filename : str or None, optional
         The filename locally to save this audio to. The basename of this
         filename will be the name of the file stored in the bucket.
+
+    Returns
+    -------
+    transcript_filename : str
+        The path to the transcript file.
     """
     if isinstance(a, Audio):
         a = a.hash_str()
-    out = _transcribe(a, bucket, filename=filename)
+    transcript_filename = _transcribe(a, bucket, filename=filename)
+    return transcript_filename
