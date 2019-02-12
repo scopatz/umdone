@@ -56,7 +56,7 @@ def _transcribe(a, bucket, sr=None, filename=None, transcript_filename=None):
         "TranscriptionJobName": job_name,
         "LanguageCode": "en-US",
         "MediaSampleRateHertz": sr,
-        "MediaFormat": os.path.splitext(filename)[1:],
+        "MediaFormat": os.path.splitext(filename)[1][1:],
         "Media": {"MediaFileUri": s3file},
         "OutputBucketName": bucket,
         "Settings": {
@@ -65,16 +65,16 @@ def _transcribe(a, bucket, sr=None, filename=None, transcript_filename=None):
         }
     }
     job_json = json.dumps(job)
-    ![aws aws transcribe start-transcription-job --cli-input-json @(job_json)]
+    ![aws transcribe start-transcription-job --cli-input-json @(job_json)]
     # now wait for the job to be done.
     t0 = time.monotonic()
     job_is_done = False
     while not job_is_done:
         current = time.monotonic()
         print('\rwaiting for transcription: ' + str(current - t0) + ' s',
-              flush=true, end='')
+              flush=True, end='')
         time.sleep(1.0)
-        job_is_done, status, info = _get_job_data(job_name)
+        job_is_done, status, info = _get_job_info(job_name)
     print()
     # check the job status
     if status == "COMPLETED":
