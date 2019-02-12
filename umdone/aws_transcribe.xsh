@@ -127,3 +127,45 @@ def transcribe(a, bucket, filename=None, transcript_filename=None):
     transcript_filename = _transcribe(a, bucket, filename=filename,
                                       transcript_filename=transcript_filename)
     return transcript_filename
+
+
+DEFAULT_FILTER_WORDS = frozenset([
+    "Uh",
+    "Um",
+    "Ah",
+    "Er",
+    "Hm",
+    "Hmm",
+    "Mhm",
+    "Uhm",
+])
+
+
+@cache
+def _filter_words(a, transcript_filename, sr=None, words=None):
+    a = Audio.from_hash_or_init(a, sr=sr)
+    sr = a.sr
+
+
+def filter_words(a, transcript_filename, words=None):
+    """Uses AWS Transcripts to filter out a list of words from audio.
+    Parameters
+    ----------
+    a : str or Audio
+        Input audio. If this is a string, it will be read in from
+        a file. If this is an Audio instance, it will be used directly.
+    transcript_filename : str or None, optional
+        The filename locally to save this transcript to.
+    words : Iterable of str, optional
+        A collection of words to remove from the audio. This listing will be
+        normalized by case and punctuation. If None, Ums and Ahs will be removed.
+
+    Returns
+    -------
+    b : Audio
+        The path to the transcript file.
+    """
+    if isinstance(a, Audio):
+        a = a.hash_str()
+    b = _filter_words(a, transcript_filename, words=words)
+    return b
