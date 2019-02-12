@@ -16,7 +16,7 @@ from umdone.commands import audio_io, data_out
 @lazyobject
 def PARSER():
     parser = ArgumentParser("aws-transcribe")
-    parser.add_argument('bucket', help="AWS bucket to use", dest="bucket")
+    parser.add_argument('bucket', help="AWS bucket to use")
     parser.add_argument(
         "audio_path", help="path to local file or URL.", nargs="?", default=None
     )
@@ -28,7 +28,7 @@ def PARSER():
     )
     parser.add_argument(
         "--transcript-file",
-        dest="transcript",
+        dest="transcript_file",
         default=None,
         help="local file where the transcript should be stored",
     )

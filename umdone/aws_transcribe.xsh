@@ -45,7 +45,7 @@ def _get_job_info(name):
 
 
 @cache
-def _transcribe(a, bucket, filename=None, transcript_filename=None):
+def _transcribe(a, bucket, sr=None, filename=None, transcript_filename=None):
     a = Audio.from_hash_or_init(a, sr=sr)
     sr = a.sr
     # first upload to S3
@@ -101,7 +101,7 @@ def _transcribe(a, bucket, filename=None, transcript_filename=None):
     return transcript_filename
 
 
-def transcibe(a, bucket, filename=None, transcript_filename=None):
+def transcribe(a, bucket, filename=None, transcript_filename=None):
     """Uses AWS to transcribe an Audio instance.
 
     Parameters
