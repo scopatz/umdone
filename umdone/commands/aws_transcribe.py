@@ -35,8 +35,8 @@ def PARSER():
     return parser
 
 
-@data_out
 @audio_io
+@data_out
 def main(audio_in, args, stdin=None, stdout=None, stderr=None, spec=None):
     """Transcribes the audio using AWS Transcribe"""
     print_color("{YELLOW}Transcribing audio via AWS{NO_COLOR}", file=stderr, flush=True)
