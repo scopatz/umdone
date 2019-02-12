@@ -16,13 +16,31 @@ from xonsh.proc import QueueReader, NonBlockingFDReader
 from umdone.sound import Audio
 
 
-NEXT_IN_PIPELINE = None
+NEXT_AUDIO_IN_PIPELINE = NEXT_DATA_IN_PIPELINE = None
 
 
 def _stash_get_audio(stdin, stderr, spec):
-    global NEXT_IN_PIPELINE
-    audio, NEXT_IN_PIPELINE = NEXT_IN_PIPELINE, None
+    global NEXT_AUDIO_IN_PIPELINE
+    audio, NEXT_AUDIO_IN_PIPELINE = NEXT_AUDIO_IN_PIPELINE, None
     return audio
+
+
+def _stash_set_audio(audio, stdout, stderr, spec):
+    global NEXT_AUDIO_IN_PIPELINE
+    NEXT_AUDIO_IN_PIPELINE = audio
+    return 0
+
+
+def _stash_get_data():
+    global NEXT_DATA_IN_PIPELINE
+    data, NEXT_DATA_IN_PIPELINE = NEXT_DATA_IN_PIPELINE, None
+    return data
+
+
+def _stash_set_data(data):
+    global NEXT_DATA_IN_PIPELINE
+    NEXT_DATA_IN_PIPELINE = data
+    return 0
 
 
 def audio_in(f):
@@ -36,12 +54,6 @@ def audio_in(f):
         return f(audio, args, stdin=stdin, stdout=stdout, stderr=stderr, spec=spec)
 
     return dec
-
-
-def _stash_set_audio(audio, stdout, stderr, spec):
-    global NEXT_IN_PIPELINE
-    NEXT_IN_PIPELINE = audio
-    return 0
 
 
 def audio_out(f):
@@ -70,6 +82,37 @@ def audio_io(f):
         rtn = _stash_set_audio(aout, stdout, stderr, spec)
         return rtn
 
+    return dec
+
+
+def data_in(f):
+    """A decorator for sending data into an audio command"""
+    @functools.wraps(f)
+    def dec(*args, **kwargs):
+        din = _stash_get_data()
+        rtn = f(din, *args, **kwargs)
+        return rtn
+    return dec
+
+
+def data_out(f):
+    """A decorator for sending data out of an audio command"""
+    @functools.wraps(f)
+    def dec(*args, **kwargs):
+        rtn, dout = f(*args, **kwargs)
+        _stash_set_data(dout)
+        return rtn
+    return dec
+
+
+def data_io(f):
+    """A decorator for sending data into and out of an audio command"""
+    @functools.wraps(f)
+    def dec(*args, **kwargs):
+        din = _stash_get_data()
+        rtn, dout = f(din, *args, **kwargs)
+        _stash_set_data(dout)
+        return rtn
     return dec
 
 
@@ -119,4 +162,5 @@ def swap_aliases():
     load_aliases()
     yield
     unload_aliases()
+
     builtins.aliases.update(existing)

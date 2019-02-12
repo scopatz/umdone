@@ -45,7 +45,7 @@ def _get_job_info(name):
 
 
 @cache
-def _transcribe(a, bucket, filename=None):
+def _transcribe(a, bucket, filename=None, transcript_filename=None):
     a = Audio.from_hash_or_init(a, sr=sr)
     sr = a.sr
     # first upload to S3
@@ -90,14 +90,18 @@ def _transcribe(a, bucket, filename=None):
     # get the transcript
     transcript_basename = os.path.basename(info["Transcript"]["TranscriptFileUri"])
     transcript_url = 's3://' + bucket + '/' + transcript_basename
-    transcript_filename = os.path.join(aws_cache_dir(), transcript_basename)
+    if transcript_filename is None:
+        transcript_filename = os.path.join(aws_cache_dir(), transcript_basename)
+    else:
+        transcript_dir = os.path.dirname(transcript_filename)
+        os.makedirs(transcript_dir, exist_ok=True)
     print_color('  - downloading transcript {GREEN}' + transcript_url + '{NO_COLOR} to {CYAN}' +
                 transcript_filename + '{NO_COLOR}', file=sys.stderr)
     ![aws s3 cp @(transcript_url) @(transcript_filename)]
     return transcript_filename
 
 
-def transcibe(a, bucket, filename=None):
+def transcibe(a, bucket, filename=None, transcript_filename=None):
     """Uses AWS to transcribe an Audio instance.
 
     Parameters
@@ -110,6 +114,8 @@ def transcibe(a, bucket, filename=None):
     filename : str or None, optional
         The filename locally to save this audio to. The basename of this
         filename will be the name of the file stored in the bucket.
+    transcript_filename : str or None, optional
+        The filename locally to save this transcript to.
 
     Returns
     -------
@@ -118,5 +124,6 @@ def transcibe(a, bucket, filename=None):
     """
     if isinstance(a, Audio):
         a = a.hash_str()
-    transcript_filename = _transcribe(a, bucket, filename=filename)
+    transcript_filename = _transcribe(a, bucket, filename=filename,
+                                      transcript_filename=transcript_filename)
     return transcript_filename
