@@ -171,7 +171,7 @@ def _filter_words(a, transcript_filename, sr=None, words=None):
     bounds = np.empty((len(items), 2), dtype='int64')
     mask = np.empty(len(items), dtype=bool)
     for i, item in enumerate(items):
-        bounds[i] = (float(item['start_time'] * sr), float(item['end_time'] * sr))
+        bounds[i] = (float(item['start_time']) * sr, float(item['end_time']) * sr)
         word = item['alternatives'][0]['content']
         mask[i] = word not in words
     # now remove the marked parts
