@@ -5,10 +5,13 @@ import json
 import time
 import uuid
 
+import numpy as np
+
 from xonsh.tools import print_color
 
 from umdone.tools import cache
 from umdone.sound import Audio
+from umdone.basic_filters import remove_marked_clips
 
 
 def aws_cache_dir():
@@ -141,14 +144,44 @@ DEFAULT_FILTER_WORDS = frozenset([
 ])
 
 
+def _expand_words(words):
+    expanded = set(words)
+    expanded.update(map(str.upper, words))
+    expanded.update(map(str.lower, words))
+    punctuation = ".,;\"'!?"
+    for p in punctuation:
+        expanded.update(p + w for w in words)
+        expanded.update(w + p for w in words)
+        expanded.update(p + w + p for w in words)
+    return expanded
+
+
 @cache
 def _filter_words(a, transcript_filename, sr=None, words=None):
+    # set up data
     a = Audio.from_hash_or_init(a, sr=sr)
     sr = a.sr
+    words = DEFAULT_FILTER_WORDS if words is None else words
+    words = _expand_words(words)
+    with open(transcript_filename) as f:
+        transcript = json.load(f)
+    items = transcipt['results']['items']
+    items = [item for item in items if item['type'] == "pronunciation"]
+    # make clip bounds and mask
+    bounds = np.empty((len(items), 2), dtype='int64')
+    mask = np.empty(len(items), dtype=bool)
+    for i, item in enumerate(items):
+        bounds[i] = (float(item['start_time'] * sr), float(item['end_time'] * sr))
+        word = item['alternatives'][0]['content']
+        mask[i] = word not in words
+    # now remove the marked parts
+    b = remove_marked_clips(a, bounds=bounds, mask=mask)
+    return b
 
 
 def filter_words(a, transcript_filename, words=None):
     """Uses AWS Transcripts to filter out a list of words from audio.
+
     Parameters
     ----------
     a : str or Audio
