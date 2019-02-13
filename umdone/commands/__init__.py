@@ -87,10 +87,10 @@ def audio_io(f):
 
 def data_in(f):
     """A decorator for sending data into an audio command"""
-    @functools.wraps(f)
-    def dec(*args, **kwargs):
+    # Cannot use @functools.wraps(f)
+    def dec(ain, args, **kwargs):
         din = _stash_get_data()
-        rtn = f(din, *args, **kwargs)
+        rtn = f(din, ain, args, **kwargs)
         return rtn
     return dec
 

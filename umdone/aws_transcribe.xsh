@@ -165,7 +165,7 @@ def _filter_words(a, transcript_filename, sr=None, words=None):
     words = _expand_words(words)
     with open(transcript_filename) as f:
         transcript = json.load(f)
-    items = transcipt['results']['items']
+    items = transcript['results']['items']
     items = [item for item in items if item['type'] == "pronunciation"]
     # make clip bounds and mask
     bounds = np.empty((len(items), 2), dtype='int64')
