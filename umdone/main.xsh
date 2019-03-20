@@ -31,7 +31,7 @@ def run(file=None, command=None):
     else:
         raise RuntimeError('Either a script file or a command (-c) must be given')
     updates = {"__file__": path, "__name__": "__main__"}
-    with ${...}.swap(XONSH_SOURCE=path), swap_values(builtins.__xonsh__.ctx, updates):
+    with ${...}.swap(XONSH_SOURCE=path, XONSH_INTERACTIVE=False), swap_values(builtins.__xonsh__.ctx, updates):
         execer.exec(src, mode=mode, glbs=builtins.__xonsh__.ctx, filename=path)
 
 
